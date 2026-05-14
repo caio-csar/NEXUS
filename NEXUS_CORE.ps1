@@ -25,7 +25,9 @@ if (-not (
 # --------------------------------------------
 
 $script:Cloud = "https://cloud.maxdata.com.br/remote.php/webdav"
-$script:PastaModulos = "/NEXUS"
+
+# Scripts públicos no GitHub RAW
+$script:NexusRawBase = "https://raw.githubusercontent.com/caio-csar/NEXUS/main"
 
 # --------------------------------------------
 # CREDENCIAIS
@@ -54,7 +56,7 @@ try {
         [Text.Encoding]::ASCII.GetBytes("$($script:Usuario):$plain")
     )
 
-    $req = [System.Net.HttpWebRequest]::Create("$script:Cloud/NEXUS")
+    $req = [System.Net.HttpWebRequest]::Create("$script:Cloud")
     $req.Method = "HEAD"
     $req.Headers.Add("Authorization", "Basic $basic")
     $req.Timeout = 10000
@@ -124,8 +126,8 @@ function Baixar-ArquivoCore {
     )
 
     $temp = Join-Path $env:TEMP $NomeArquivo
-    $url  = "$script:Cloud$script:PastaModulos/$NomeArquivo"
-    $headers = New-CoreHeaders
+    $url  = "$script:NexusRawBase/$NomeArquivo"
+
     $maxTentativas = 3
 
     for ($tentativa = 1; $tentativa -le $maxTentativas; $tentativa++) {
@@ -133,7 +135,6 @@ function Baixar-ArquivoCore {
             Invoke-WebRequest `
                 -Uri $url `
                 -OutFile $temp `
-                -Headers $headers `
                 -UseBasicParsing `
                 -ErrorAction Stop
 
