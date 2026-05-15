@@ -210,7 +210,7 @@ function Atualizacao-Gradual {
         }
 
         Write-Host ""
-        $entrada = Read-Host "Selecione versoes com virgula ou ENTER para pular"
+        $entrada = Read-Host "Selecione versoes separando por virgula ou ENTER para pular \n exemplo(1,7,3)"
 
         if ([string]::IsNullOrWhiteSpace($entrada)) {
             continue
