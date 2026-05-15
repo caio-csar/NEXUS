@@ -210,7 +210,11 @@ function Atualizacao-Gradual {
         }
 
         Write-Host ""
-        $entrada = Read-Host "Selecione versoes separando por virgula ou ENTER para pular \n exemplo(1,7,3)"
+        $entrada = Read-Host @"
+Selecione as versões separando por vírgula ou pressione ENTER para pular.
+
+Exemplo: 1,7,3
+"@
 
         if ([string]::IsNullOrWhiteSpace($entrada)) {
             continue
