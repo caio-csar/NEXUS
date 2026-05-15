@@ -211,7 +211,7 @@ function Atualizacao-Gradual {
 
         Write-Host ""
         $entrada = Read-Host @"
-Selecione as versões separando por virgula ou pressione ENTER para pular.
+Selecione as versoes separando por virgula ou pressione ENTER para pular.
 
 Exemplo: 1,7,3
 "@
