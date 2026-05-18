@@ -26,7 +26,7 @@ if (-not (
 
 $script:Cloud = "https://cloud.maxdata.com.br/remote.php/webdav"
 
-$script:NexusRawBase = "https://raw.githubusercontent.com/caio-csar/NEXUS/main"
+$script:NexusRawBase = "https://raw.githubusercontent.com/caio-csar/NEXUS/nexus-enxuto"
 
 # --------------------------------------------
 # CREDENCIAIS
