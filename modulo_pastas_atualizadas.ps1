@@ -7,7 +7,12 @@ param(
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 Clear-Host
 
+# ============================================
+# SHARED
+# ============================================
+
 $shared = Join-Path $PSScriptRoot "NEXUS_SHARED.ps1"
+
 if (Test-Path $shared) {
     . $shared
 }
@@ -16,85 +21,188 @@ else {
     return
 }
 
-$Cloud   = "https://cloud.maxdata.com.br/remote.php/webdav"
-$Cred    = Nova-CredencialNexus -Usuario $Usuario -SenhaPlain $SenhaPlain
-$Headers = New-NexusBasicAuthHeader -Usuario $Cred.UserName -Credencial $Cred
+# ============================================
+# CONFIG
+# ============================================
 
-Mostrar-TituloNexus "BAIXAR PASTAS ATUALIZADAS"
+$Cloud = "https://cloud.maxdata.com.br/remote.php/webdav"
 
-$destino = Selecionar-PastaNexus -Titulo "Selecione onde salvar as pastas atualizadas"
+$Cred = Nova-CredencialNexus `
+    -Usuario $Usuario `
+    -SenhaPlain $SenhaPlain
+
+$Headers = New-NexusBasicAuthHeader `
+    -Usuario $Cred.UserName `
+    -Credencial $Cred
+
+$Base = "/PASTAS_ATUALIZADAS"
+
+# ============================================
+# EXECUCAO
+# ============================================
+
+Mostrar-TituloNexus "PASTAS ATUALIZADAS"
+
+$destino = Selecionar-PastaNexus `
+    -Titulo "Selecione onde salvar"
 
 if (-not $destino) {
+
     Mostrar-Aviso "Nenhuma pasta selecionada."
-    Pausar-Nexus -ChamadoPeloCore $ChamadoPeloCore
+
+    Pausar-Nexus `
+        -ChamadoPeloCore $ChamadoPeloCore
+
     return
 }
 
-$base  = "/VERSOES"
-$regex = '^(Boleto|CTE|MDFE|NFCE|NFE|NFSE|NFSE2|NFCom).*\.(zip|rar)$'
+$itens = @(
+    Get-NexusCloudItemsComTipo `
+        -Cloud $Cloud `
+        -Path $Base `
+        -Credencial $Cred
+)
 
-Write-Host "Buscando ultima versao disponivel..." -ForegroundColor Cyan
+if ($itens.Count -eq 0) {
 
-$series = @(Get-NexusSeries -Cloud $Cloud -Base $base -Credencial $Cred)
+    Mostrar-Erro "Nenhuma pasta encontrada."
 
-if ($series.Count -eq 0) {
-    Mostrar-Erro "Nenhuma serie encontrada."
-    Pausar-Nexus -ChamadoPeloCore $ChamadoPeloCore
+    Pausar-Nexus `
+        -ChamadoPeloCore $ChamadoPeloCore
+
     return
 }
 
-$serie  = $series[-1].Nome
-$versoes = @(Get-NexusVersoes -Cloud $Cloud -Path "$base/$serie" -Credencial $Cred)
+$pastas = @(
+    $itens |
+    Where-Object {
+        $_.Tipo -eq "PASTA"
+    } |
+    Sort-Object Nome
+)
 
-if ($versoes.Count -eq 0) {
-    Mostrar-Erro "Nenhuma versao encontrada na serie $serie."
-    Pausar-Nexus -ChamadoPeloCore $ChamadoPeloCore
+if ($pastas.Count -eq 0) {
+
+    Mostrar-Erro "Nenhuma pasta disponivel."
+
+    Pausar-Nexus `
+        -ChamadoPeloCore $ChamadoPeloCore
+
     return
 }
 
-$versao     = $versoes[-1].Nome
-$pathVersao = "$base/$serie/$versao"
+Write-Host "Pastas disponiveis:"
+Write-Host ""
 
-$arquivos = @(Get-NexusCloudItems -Cloud $Cloud -Path $pathVersao -Credencial $Cred)
-$validos  = @($arquivos | Where-Object { $_ -match $regex })
+for ($i = 0; $i -lt $pastas.Count; $i++) {
 
-if ($validos.Count -eq 0) {
-    Mostrar-Erro "Nenhuma pasta fiscal atualizada encontrada na versao $versao."
-    Pausar-Nexus -ChamadoPeloCore $ChamadoPeloCore
-    return
+    Write-Host (
+        " {0} - {1}" -f
+        ($i + 1),
+        $pastas[$i].Nome
+    )
 }
 
 Write-Host ""
-Write-Host "Serie: $serie" -ForegroundColor Cyan
-Write-Host "Versao: $versao" -ForegroundColor Cyan
-Write-Host "Destino: $destino" -ForegroundColor Cyan
+Write-Host "0 - Voltar"
 Write-Host ""
-Write-Host "Arquivos que serao baixados:" -ForegroundColor Cyan
 
-foreach ($f in $validos) {
-    Write-Host " - $f"
+$op = (
+    Read-Host "Escolha"
+).Trim()
+
+if ($op -eq "0") {
+    return
 }
 
+if ($op -notmatch '^\d+$') {
+
+    Mostrar-Erro "Opcao invalida."
+
+    Pausar-Nexus `
+        -ChamadoPeloCore $ChamadoPeloCore
+
+    return
+}
+
+$idx = [int]$op - 1
+
+if (
+    $idx -lt 0 -or
+    $idx -ge $pastas.Count
+) {
+
+    Mostrar-Erro "Opcao invalida."
+
+    Pausar-Nexus `
+        -ChamadoPeloCore $ChamadoPeloCore
+
+    return
+}
+
+$pasta = $pastas[$idx].Nome
+
+Write-Host ""
+Write-Host "Pasta selecionada: $pasta" -ForegroundColor Cyan
+
 Write-Host ""
 
-if (-not (Confirmar-Acao "Confirmar download")) {
-    Mostrar-Aviso "Operacao cancelada."
-    Pausar-Nexus -ChamadoPeloCore $ChamadoPeloCore
+if (-not (
+    Confirmar-Acao "Confirmar download"
+)) {
     return
 }
 
 $timer = Iniciar-TimerNexus
 
+$pathRemoto = "$Base/$pasta"
+
+$arquivos = @(
+    Get-NexusCloudItemsComTipo `
+        -Cloud $Cloud `
+        -Path $pathRemoto `
+        -Credencial $Cred
+)
+
+$arquivos = @(
+    $arquivos |
+    Where-Object {
+        $_.Tipo -eq "ARQUIVO"
+    }
+)
+
+if ($arquivos.Count -eq 0) {
+
+    Mostrar-Aviso "Nenhum arquivo encontrado."
+
+    Pausar-Nexus `
+        -ChamadoPeloCore $ChamadoPeloCore
+
+    return
+}
+
 $ProgressPreference = 'SilentlyContinue'
 
-$ok   = 0
+$ok = 0
 $erro = 0
 
-foreach ($f in $validos) {
-    $url   = "$Cloud$pathVersao/$f"
-    $saida = Join-Path $destino $f
+foreach ($arq in $arquivos) {
 
-    if (Download-NexusArquivo -Url $url -Destino $saida -Nome $f -Headers $Headers) {
+    $nome = $arq.Nome
+
+    $url = "$Cloud$pathRemoto/$nome"
+
+    $saida = Join-Path `
+        $destino `
+        $nome
+
+    if (
+        Download-NexusArquivo `
+            -Url $url `
+            -Destino $saida `
+            -Nome $nome `
+            -Headers $Headers
+    ) {
         $ok++
     }
     else {
@@ -105,11 +213,17 @@ foreach ($f in $validos) {
 $ProgressPreference = 'Continue'
 
 Write-Host ""
+
 Mostrar-Sucesso "Download concluido."
+
 Write-Host "Baixados: $ok" -ForegroundColor Green
 Write-Host "Falhas: $erro" -ForegroundColor Yellow
 
-Mostrar-TempoExecucao -Inicio $timer -Nome "download das pastas atualizadas"
+Mostrar-TempoExecucao `
+    -Inicio $timer `
+    -Nome "download"
+
 Abrir-PastaNexus $destino
 
-Pausar-Nexus -ChamadoPeloCore $ChamadoPeloCore
+Pausar-Nexus `
+    -ChamadoPeloCore $ChamadoPeloCore

@@ -337,10 +337,6 @@ function Get-NexusCloudItemsComTipo {
             Select-Object -Skip 1 |
             ForEach-Object {
                 $nome = $_.propstat.prop.displayname
-
-                # Usa SelectSingleNode com namespace para detectar pastas corretamente.
-                # O elemento <d:collection/> e vazio — sem namespace manager retornaria
-                # string vazia em vez de $null, causando classificacao incorreta.
                 $ehPasta = $null -ne $_.SelectSingleNode("d:propstat/d:prop/d:resourcetype/d:collection", $ns)
 
                 if ($nome) {
@@ -506,7 +502,8 @@ function Get-NexusVersoes {
 
 function Test-NexusArquivoVersaoValido {
     param(
-        [string]$Nome
+        [string]$Nome,
+        [switch]$Completo
     )
 
     if ([string]::IsNullOrWhiteSpace($Nome)) {
@@ -535,7 +532,7 @@ function Test-NexusArquivoVersaoValido {
         return $true
     }
 
-    if ($n -match 'max_manute') {
+    if ($Completo -and $n -match 'max_manute') {
         return $true
     }
 
@@ -544,11 +541,12 @@ function Test-NexusArquivoVersaoValido {
 
 function Get-NexusArquivosVersaoValidos {
     param(
-        [array]$Arquivos
+        [array]$Arquivos,
+        [switch]$Completo
     )
 
     return @($Arquivos | Where-Object {
-        Test-NexusArquivoVersaoValido -Nome $_
+        Test-NexusArquivoVersaoValido -Nome $_ -Completo:$Completo
     })
 }
 
@@ -582,12 +580,10 @@ function Interpretar-SelecaoNumericaNexus {
 }
 
 # ============================================
-# FUNCOES - DOWNLOAD DE VERSAO (UNIFICADO)
+# FUNCOES - DOWNLOAD DE VERSAO
 # ============================================
 
 function Invoke-NexusDownloadVersao {
-    # Funcao unificada usada pelo modulo_atualizar_sistema e modulo_instalador.
-    # Lista os arquivos validos de uma versao no WebDAV e os baixa para o destino.
     param(
         [string]$Cloud,
         [string]$Base,
@@ -595,12 +591,13 @@ function Invoke-NexusDownloadVersao {
         [string]$Versao,
         [string]$Destino,
         [System.Management.Automation.PSCredential]$Credencial,
-        [hashtable]$Headers
+        [hashtable]$Headers,
+        [switch]$Completo
     )
 
     $pathVersao = "$Base/$Serie/$Versao"
-    $arquivos   = @(Get-NexusCloudItems -Cloud $Cloud -Path $pathVersao -Credencial $Credencial)
-    $validos    = @(Get-NexusArquivosVersaoValidos -Arquivos $arquivos)
+    $arquivos = @(Get-NexusCloudItems -Cloud $Cloud -Path $pathVersao -Credencial $Credencial)
+    $validos = @(Get-NexusArquivosVersaoValidos -Arquivos $arquivos -Completo:$Completo)
 
     if ($validos.Count -eq 0) {
         Mostrar-Aviso "Nenhum arquivo valido encontrado em $Versao."
@@ -616,11 +613,11 @@ function Invoke-NexusDownloadVersao {
 
     Write-Host ""
 
-    $ok   = 0
+    $ok = 0
     $erro = 0
 
     foreach ($f in $validos) {
-        $url   = "$Cloud$pathVersao/$f"
+        $url = "$Cloud$pathVersao/$f"
         $saida = Join-Path $Destino $f
 
         if (Download-NexusArquivo -Url $url -Destino $saida -Nome $f -Headers $Headers) {
