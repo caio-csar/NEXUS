@@ -14,6 +14,16 @@ set "LOG=%BASE%Reset_WMI_%DATA%_%HORA%.log"
 set "WBEM=%windir%\System32\wbem"
 set "REPO=%WBEM%\Repository"
 set "BKP=%WBEM%\Repository.old_%DATA%_%HORA%"
+set "TASK=NEXUS_Reset_WMI_PosReinicio"
+set "PERSIST_DIR=%ProgramData%\NEXUS"
+set "PERSIST_BAT=%PERSIST_DIR%\wmi_reset_pos_reinicio.bat"
+set "POSREINICIO=0"
+
+if /i "%~1"=="--pos-reinicio" (
+    set "POSREINICIO=1"
+    set "BASE=%PERSIST_DIR%\"
+    set "LOG=%PERSIST_DIR%\Reset_WMI_%DATA%_%HORA%.log"
+)
 
 echo ============================================
 echo     RESET WMI AGRESSIVO, SEGURO E ROBUSTO
@@ -111,8 +121,37 @@ if exist "%REPO%" (
         echo ERRO: nao foi possivel remover/renomear o Repository.
         echo Provavel bloqueio ativo do Windows.
         echo.
-        echo SOLUCAO: reinicie o computador e rode este BAT logo apos iniciar.
         echo [%date% %time%] ERRO: Repository permaneceu bloqueado >> "%LOG%"
+
+        if "%POSREINICIO%"=="0" (
+            echo Preparando conclusao automatica no proximo reinicio...
+            echo [%date% %time%] Agendando execucao pos-reinicio >> "%LOG%"
+
+            if not exist "%PERSIST_DIR%" (
+                mkdir "%PERSIST_DIR%" >> "%LOG%" 2>&1
+            )
+
+            copy /y "%~f0" "%PERSIST_BAT%" >> "%LOG%" 2>&1
+
+            schtasks /Create /TN "%TASK%" /SC ONSTART /RU SYSTEM /RL HIGHEST /TR "\"%PERSIST_BAT%\" --pos-reinicio" /F >> "%LOG%" 2>&1
+
+            if !errorlevel! equ 0 (
+                echo.
+                echo Tarefa agendada:
+                echo %TASK%
+                echo.
+                echo SOLUCAO: reinicie o computador. O WMI sera corrigido automaticamente ao iniciar.
+                echo Depois rode o NEXUS novamente para testar.
+            ) else (
+                echo.
+                echo ERRO: nao foi possivel agendar a correcao automatica.
+                echo Reinicie o computador e execute o NEXUS como Administrador.
+            )
+        ) else (
+            echo SOLUCAO: reinicie em modo seguro ou feche servicos que estejam prendendo o WMI.
+            echo [%date% %time%] Falha tambem na execucao pos-reinicio >> "%LOG%"
+        )
+
         pause
         exit /b 1
     )
@@ -181,6 +220,8 @@ echo ============================================
 echo             PROCESSO FINALIZADO
 echo ============================================
 echo.
+schtasks /Delete /TN "%TASK%" /F >> "%LOG%" 2>&1
+
 echo Log salvo em:
 echo "%LOG%"
 echo.
