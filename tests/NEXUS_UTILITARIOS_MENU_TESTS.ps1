@@ -68,9 +68,14 @@ Assert-NotContains `
     -Unexpected 'Gerar Log para Suporte' `
     -Message "Utilitarios nao deve exibir Gerar Log para Suporte por enquanto."
 
+Assert-NotContains `
+    -Text $util `
+    -Unexpected 'Explorar Arquivos Uteis' `
+    -Message "Explorar Arquivos Uteis deve sair de Utilitarios."
+
 Assert-Contains `
     -Text $util `
-    -Expected 'Explorar Arquivos Uteis' `
-    -Message "O explorador antigo deve continuar disponivel dentro de Utilitarios."
+    -Expected '"0" { return }' `
+    -Message "A opcao 0 deve sair direto do modulo de Utilitarios."
 
 Write-Host "NEXUS_UTILITARIOS_MENU_TESTS OK" -ForegroundColor Green
