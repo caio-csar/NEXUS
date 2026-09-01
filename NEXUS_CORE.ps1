@@ -267,7 +267,6 @@ while ($true) {
     Write-Host "4 - Baixar Pastas Atualizadas"
     Write-Host "5 - Transferencia Cloud"
     Write-Host "7 - Explorar Utilitarios"
-    Write-Host "ENTER - Atualizar NEXUS"
     Write-Host "0 - Sair"
     Write-Host ""
 
