@@ -16,6 +16,18 @@ function Assert-Contains {
     }
 }
 
+function Assert-NotContains {
+    param(
+        [string]$Text,
+        [string]$Unexpected,
+        [string]$Message
+    )
+
+    if ($Text.Contains($Unexpected)) {
+        throw $Message
+    }
+}
+
 Assert-Contains `
     -Text $util `
     -Expected 'UTILITARIOS' `
@@ -38,18 +50,23 @@ Assert-Contains `
 
 Assert-Contains `
     -Text $util `
-    -Expected 'Limpar Temporarios do NEXUS' `
-    -Message "Utilitarios deve ter a opcao Limpar Temporarios do NEXUS."
+    -Expected 'Abrir Pasta do Sistema' `
+    -Message "Utilitarios deve ter a opcao Abrir Pasta do Sistema."
 
-Assert-Contains `
+Assert-NotContains `
     -Text $util `
-    -Expected 'Diagnostico do Ambiente' `
-    -Message "Utilitarios deve ter a opcao Diagnostico do Ambiente."
+    -Unexpected 'Limpar Temporarios do NEXUS' `
+    -Message "Utilitarios nao deve exibir Limpar Temporarios do NEXUS por enquanto."
 
-Assert-Contains `
+Assert-NotContains `
     -Text $util `
-    -Expected 'Gerar Log para Suporte' `
-    -Message "Utilitarios deve ter a opcao Gerar Log para Suporte."
+    -Unexpected 'Diagnostico do Ambiente' `
+    -Message "Utilitarios nao deve exibir Diagnostico do Ambiente por enquanto."
+
+Assert-NotContains `
+    -Text $util `
+    -Unexpected 'Gerar Log para Suporte' `
+    -Message "Utilitarios nao deve exibir Gerar Log para Suporte por enquanto."
 
 Assert-Contains `
     -Text $util `
