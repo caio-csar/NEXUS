@@ -117,7 +117,7 @@ $Modulos = @(
     @{ Id = 3; Nome = "Baixar Ultima Versao";          Script = "modulo_ultima_versao.ps1" },
     @{ Id = 4; Nome = "Baixar Pastas Atualizadas";     Script = "modulo_pastas_atualizadas.ps1" },
     @{ Id = 5; Nome = "Transferencia Cloud";           Script = "modulo_upload.ps1" },
-    @{ Id = 6; Nome = "Utilitarios";                   Script = "modulo_explorar_uteis.ps1" }
+    @{ Id = 6; Nome = "Utilitarios";                   Script = "modulo_explorar_uteis.ps1"; SemPausaRetorno = $true }
 )
 
 # --------------------------------------------
@@ -249,7 +249,9 @@ function Executar-Modulo {
         Remove-Item $arquivo -Force -ErrorAction SilentlyContinue
     }
 
-    Read-Host "`nENTER para voltar"
+    if (-not $Modulo.SemPausaRetorno) {
+        Read-Host "`nENTER para voltar"
+    }
 }
 
 # --------------------------------------------
