@@ -443,6 +443,46 @@ function Test-ProgramaInstalado {
     return $false
 }
 
+function Test-SqlNativeClientInstalado {
+    $paths = @(
+        "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\*",
+        "HKLM:\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall\*"
+    )
+
+    foreach ($path in $paths) {
+        $item = Get-ItemProperty $path -ErrorAction SilentlyContinue |
+            Where-Object { $_.DisplayName -match 'SQL Server.*Native Client' } |
+            Select-Object -First 1
+
+        if ($item) {
+            return $true
+        }
+    }
+
+    $driverPaths = @(
+        "HKLM:\SOFTWARE\ODBC\ODBCINST.INI\SQL Server Native Client 11.0",
+        "HKLM:\SOFTWARE\WOW6432Node\ODBC\ODBCINST.INI\SQL Server Native Client 11.0"
+    )
+
+    foreach ($driverPath in $driverPaths) {
+        if (Test-Path $driverPath) {
+            return $true
+        }
+    }
+
+    return $false
+}
+
+function Test-DependenciaInstalada {
+    param([string]$Nome)
+
+    if ($Nome -eq "SQL Server Native Client") {
+        return Test-SqlNativeClientInstalado
+    }
+
+    return Test-ProgramaInstalado $Nome
+}
+
 function Instalar-MSI {
     param(
         [string]$Nome,
@@ -461,7 +501,7 @@ function Instalar-MSI {
     $jaInstalado = $false
 
     foreach ($nomeTeste in $nomesTeste) {
-        if (Test-ProgramaInstalado $nomeTeste) {
+        if (Test-DependenciaInstalada $nomeTeste) {
             $jaInstalado = $true
             break
         }
@@ -493,7 +533,7 @@ function Instalar-MSI {
             Start-Sleep -Seconds 2
 
             foreach ($nomeTeste in $nomesTeste) {
-                if (Test-ProgramaInstalado $nomeTeste) {
+                if (Test-DependenciaInstalada $nomeTeste) {
                     $reboot = if ($processo.ExitCode -in @(3010, 1641)) { " (reinicio pendente)" } else { "" }
                     Write-Host "  OK$reboot" -ForegroundColor Green
                     return $true
@@ -515,7 +555,7 @@ function Instalar-MSI {
 }
 
 function Test-DependenciasOdbcInstaladas {
-    $nativeClientOk = Test-ProgramaInstalado "SQL Server Native Client"
+    $nativeClientOk = Test-SqlNativeClientInstalado
     $odbc17Ok = Test-ProgramaInstalado "ODBC Driver 17 for SQL Server"
 
     return [PSCustomObject]@{
