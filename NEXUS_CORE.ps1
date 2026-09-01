@@ -117,7 +117,8 @@ $Modulos = @(
     @{ Id = 3; Nome = "Baixar Ultima Versao";          Script = "modulo_ultima_versao.ps1" },
     @{ Id = 4; Nome = "Baixar Pastas Atualizadas";     Script = "modulo_pastas_atualizadas.ps1" },
     @{ Id = 5; Nome = "Transferencia Cloud";           Script = "modulo_upload.ps1" },
-    @{ Id = 7; Nome = "Explorar Utilitarios";          Script = "modulo_explorar_uteis.ps1" }
+    @{ Id = 7; Nome = "Explorar Utilitarios";          Script = "modulo_explorar_uteis.ps1" },
+    @{ Id = 8; Nome = "TESTE TEMP - Instalar ODBC";    Script = "modulo_testar_odbc.ps1" }
 )
 
 # --------------------------------------------
@@ -267,6 +268,7 @@ while ($true) {
     Write-Host "4 - Baixar Pastas Atualizadas"
     Write-Host "5 - Transferencia Cloud"
     Write-Host "7 - Explorar Utilitarios"
+    Write-Host "8 - TESTE TEMP - Instalar ODBC"
     Write-Host "0 - Sair"
     Write-Host ""
 
