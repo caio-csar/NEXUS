@@ -1,3 +1,8 @@
+param(
+    [string]$Usuario,
+    [string]$SenhaPlain
+)
+
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 Clear-Host
 
@@ -33,8 +38,19 @@ $script:NexusRawBase = "https://raw.githubusercontent.com/caio-csar/NEXUS/main"
 # CREDENCIAIS
 # --------------------------------------------
 
-$script:Usuario = Read-Host "Usuario"
-$script:Senha = Read-Host "Senha" -AsSecureString
+if ([string]::IsNullOrWhiteSpace($Usuario)) {
+    $script:Usuario = Read-Host "Usuario"
+}
+else {
+    $script:Usuario = $Usuario
+}
+
+if ([string]::IsNullOrWhiteSpace($SenhaPlain)) {
+    $script:Senha = Read-Host "Senha" -AsSecureString
+}
+else {
+    $script:Senha = ConvertTo-SecureString $SenhaPlain -AsPlainText -Force
+}
 
 $script:Cred = New-Object System.Management.Automation.PSCredential(
     $script:Usuario,
@@ -100,8 +116,7 @@ $Modulos = @(
     @{ Id = 2; Nome = "Atualizar Sistema";             Script = "modulo_atualizar_sistema.ps1" },
     @{ Id = 3; Nome = "Baixar Ultima Versao";          Script = "modulo_ultima_versao.ps1" },
     @{ Id = 4; Nome = "Baixar Pastas Atualizadas";     Script = "modulo_pastas_atualizadas.ps1" },
-    @{ Id = 5; Nome = "Backup para Cloud";             Script = "modulo_backup.ps1" },
-    @{ Id = 6; Nome = "Enviar Arquivos para Cloud";    Script = "modulo_upload.ps1" },
+    @{ Id = 5; Nome = "Transferencia Cloud";           Script = "modulo_upload.ps1" },
     @{ Id = 7; Nome = "Explorar Utilitarios";          Script = "modulo_explorar_uteis.ps1" }
 )
 
@@ -169,6 +184,32 @@ function Obter-SharedPath {
     return $caminho
 }
 
+function Atualizar-CoreNexus {
+    Clear-Host
+    Write-Host "Atualizando NEXUS..." -ForegroundColor Cyan
+    Write-Host ""
+
+    if ($script:SharedPath -and (Test-Path $script:SharedPath)) {
+        Remove-Item $script:SharedPath -Force -ErrorAction SilentlyContinue
+        $script:SharedPath = $null
+    }
+
+    $novoCore = Baixar-ArquivoCore "NEXUS_CORE.ps1"
+
+    if (-not $novoCore) {
+        Write-Host ""
+        Read-Host "ENTER para voltar"
+        return
+    }
+
+    powershell.exe `
+        -NoProfile `
+        -ExecutionPolicy Bypass `
+        -File $novoCore `
+        -Usuario $script:Usuario `
+        -SenhaPlain $script:SenhaPlain
+}
+
 function Executar-Modulo {
     param($Modulo)
 
@@ -224,13 +265,18 @@ while ($true) {
     Write-Host "2 - Atualizar Sistema"
     Write-Host "3 - Baixar Ultima Versao"
     Write-Host "4 - Baixar Pastas Atualizadas"
-    Write-Host "5 - Backup para Cloud"
-    Write-Host "6 - Enviar Arquivos para Cloud"
+    Write-Host "5 - Transferencia Cloud"
     Write-Host "7 - Explorar Utilitarios"
+    Write-Host "ENTER - Atualizar NEXUS"
     Write-Host "0 - Sair"
     Write-Host ""
 
     $op = (Read-Host "Escolha").Trim()
+
+    if ([string]::IsNullOrWhiteSpace($op)) {
+        Atualizar-CoreNexus
+        break
+    }
 
     if ($op -eq "0") {
         break
