@@ -1,7 +1,7 @@
 $ErrorActionPreference = "Stop"
 
 $repo = Split-Path $PSScriptRoot -Parent
-$utilPath = Join-Path $repo "modulo_explorar_uteis.ps1"
+$utilPath = Join-Path $repo "modulo_utilitarios.ps1"
 $util = Get-Content -LiteralPath $utilPath -Raw
 
 function Assert-Contains {
