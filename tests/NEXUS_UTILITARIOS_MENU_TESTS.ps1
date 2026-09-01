@@ -50,6 +50,11 @@ Assert-Contains `
 
 Assert-Contains `
     -Text $util `
+    -Expected 'Registrar Servidor no Cloud' `
+    -Message "Utilitarios deve ter a opcao Registrar Servidor no Cloud."
+
+Assert-Contains `
+    -Text $util `
     -Expected 'Abrir Pasta do Sistema' `
     -Message "Utilitarios deve ter a opcao Abrir Pasta do Sistema."
 
