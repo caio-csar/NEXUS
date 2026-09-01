@@ -3,7 +3,7 @@ $ErrorActionPreference = "Stop"
 $repo = Split-Path $PSScriptRoot -Parent
 $core = Get-Content -LiteralPath (Join-Path $repo "NEXUS_CORE.ps1") -Raw
 $installer = Get-Content -LiteralPath (Join-Path $repo "modulo_instalador.ps1") -Raw
-$util = Get-Content -LiteralPath (Join-Path $repo "modulo_explorar_uteis.ps1") -Raw
+$util = Get-Content -LiteralPath (Join-Path $repo "modulo_utilitarios.ps1") -Raw
 $tempModulePath = Join-Path $repo "modulo_testar_odbc.ps1"
 
 function Assert-Contains {
