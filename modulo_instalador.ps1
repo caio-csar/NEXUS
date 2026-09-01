@@ -441,12 +441,29 @@ function Instalar-MSI {
     param(
         [string]$Nome,
         [string]$Url,
-        [string]$TempPath
+        [string]$TempPath,
+        [string]$ArgumentosExtras = "",
+        [string[]]$NomesValidacao = @()
     )
 
-    if (Test-ProgramaInstalado $Nome) {
+    $nomesTeste = @($Nome)
+
+    if ($NomesValidacao -and $NomesValidacao.Count -gt 0) {
+        $nomesTeste = @($NomesValidacao)
+    }
+
+    $jaInstalado = $false
+
+    foreach ($nomeTeste in $nomesTeste) {
+        if (Test-ProgramaInstalado $nomeTeste) {
+            $jaInstalado = $true
+            break
+        }
+    }
+
+    if ($jaInstalado) {
         Write-Host "$Nome ja instalado." -ForegroundColor Yellow
-        return
+        return $true
     }
 
     $msi = Join-Path $TempPath "$Nome.msi"
@@ -455,17 +472,92 @@ function Instalar-MSI {
         Write-Host "Instalando $Nome..." -NoNewline
 
         try {
-            Start-Process msiexec.exe `
-                -ArgumentList "/i `"$msi`" /qn /norestart" `
-                -Wait
+            $argumentos = "/i `"$msi`" /qn /norestart $ArgumentosExtras"
+            $processo = Start-Process msiexec.exe `
+                -ArgumentList $argumentos `
+                -Wait `
+                -PassThru
 
-            Write-Host "  OK" -ForegroundColor Green
+            if ($processo.ExitCode -notin @(0, 3010, 1641)) {
+                Write-Host "  ERRO" -ForegroundColor Red
+                Mostrar-Detalhe "msiexec retornou codigo $($processo.ExitCode)."
+                return $false
+            }
+
+            Start-Sleep -Seconds 2
+
+            foreach ($nomeTeste in $nomesTeste) {
+                if (Test-ProgramaInstalado $nomeTeste) {
+                    $reboot = if ($processo.ExitCode -in @(3010, 1641)) { " (reinicio pendente)" } else { "" }
+                    Write-Host "  OK$reboot" -ForegroundColor Green
+                    return $true
+                }
+            }
+
+            Write-Host "  ERRO" -ForegroundColor Red
+            Mostrar-Detalhe "Instalador terminou sem erro, mas $Nome nao foi encontrado no registro."
+            return $false
         }
         catch {
             Write-Host "  ERRO" -ForegroundColor Red
             Mostrar-Detalhe $_.Exception.Message
+            return $false
         }
     }
+
+    return $false
+}
+
+function Test-DependenciasOdbcInstaladas {
+    $nativeClientOk = Test-ProgramaInstalado "SQL Server Native Client"
+    $odbc17Ok = Test-ProgramaInstalado "ODBC Driver 17 for SQL Server"
+
+    return [PSCustomObject]@{
+        NativeClient = $nativeClientOk
+        Odbc17       = $odbc17Ok
+        OK           = ($nativeClientOk -and $odbc17Ok)
+    }
+}
+
+function Instalar-DependenciasOdbc {
+    param(
+        [string]$TempPath
+    )
+
+    if ([string]::IsNullOrWhiteSpace($TempPath)) {
+        $TempPath = Join-Path $env:TEMP "nexus_odbc"
+    }
+
+    if (-not (Test-Path $TempPath)) {
+        New-Item -ItemType Directory -Path $TempPath -Force | Out-Null
+    }
+
+    Write-Host "Verificando dependencias ODBC..." -ForegroundColor Cyan
+    Write-Host ""
+
+    $nativeClientOk = Instalar-MSI `
+        -Nome "SQL Server Native Client" `
+        -Url "https://cloud.maxdata.com.br/s/zK2GTCSqXq9C8Kk/download/sqlnclix64.msi" `
+        -TempPath $TempPath `
+        -ArgumentosExtras "IACCEPTSQLNCLILICENSETERMS=YES" `
+        -NomesValidacao @("SQL Server Native Client")
+
+    $odbc17Ok = Instalar-MSI `
+        -Nome "ODBC Driver 17 for SQL Server" `
+        -Url "https://cloud.maxdata.com.br/s/HbCkKA39Jq4rSRo/download/msodbcsqlx64.msi" `
+        -TempPath $TempPath `
+        -ArgumentosExtras "IACCEPTMSODBCSQLLICENSETERMS=YES" `
+        -NomesValidacao @("ODBC Driver 17 for SQL Server")
+
+    $status = Test-DependenciasOdbcInstaladas
+
+    if (-not ($nativeClientOk -and $odbc17Ok -and $status.OK)) {
+        throw "Falha ao instalar dependencias ODBC. Native Client: $($status.NativeClient). ODBC 17: $($status.Odbc17)."
+    }
+
+    Write-Host ""
+    Mostrar-Sucesso "Dependencias ODBC instaladas/validadas."
+    return $true
 }
 
 function Instalar-7Zip {
@@ -773,15 +865,7 @@ try {
 
     Mostrar-TituloNexus "DEPENDENCIAS"
 
-    Instalar-MSI `
-        -Nome "SQL Server Native Client" `
-        -Url "https://cloud.maxdata.com.br/s/zK2GTCSqXq9C8Kk/download/sqlnclix64.msi" `
-        -TempPath $dirs.TempPath
-
-    Instalar-MSI `
-        -Nome "ODBC Driver 17 for SQL Server" `
-        -Url "https://cloud.maxdata.com.br/s/HbCkKA39Jq4rSRo/download/msodbcsqlx64.msi" `
-        -TempPath $dirs.TempPath
+    Instalar-DependenciasOdbc -TempPath $dirs.TempPath | Out-Null
 
     Write-Host ""
     Write-Host "Limpando arquivos temporarios..." -NoNewline
