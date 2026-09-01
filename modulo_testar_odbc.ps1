@@ -86,6 +86,12 @@ function Baixar-ArquivoPublico {
     return $false
 }
 
+function Get-NexusRawUrl {
+    param([string]$Path)
+
+    return "https://raw.githubusercontent.com/caio-csar/NEXUS/main/$Path"
+}
+
 function Instalar-MSI {
     param(
         [string]$Nome,
@@ -177,14 +183,14 @@ function Instalar-DependenciasOdbc {
 
     $nativeClientOk = Instalar-MSI `
         -Nome "SQL Server Native Client" `
-        -Url "https://cloud.maxdata.com.br/s/zK2GTCSqXq9C8Kk/download/sqlnclix64.msi" `
+        -Url (Get-NexusRawUrl "installers/odbc/sqlnclix64.msi") `
         -TempPath $TempPath `
         -ArgumentosExtras "IACCEPTSQLNCLILICENSETERMS=YES" `
         -NomesValidacao @("SQL Server Native Client")
 
     $odbc17Ok = Instalar-MSI `
         -Nome "ODBC Driver 17 for SQL Server" `
-        -Url "https://cloud.maxdata.com.br/s/HbCkKA39Jq4rSRo/download/msodbcsqlx64.msi" `
+        -Url (Get-NexusRawUrl "installers/odbc/msodbcsqlx64.msi") `
         -TempPath $TempPath `
         -ArgumentosExtras "IACCEPTMSODBCSQLLICENSETERMS=YES" `
         -NomesValidacao @("ODBC Driver 17 for SQL Server")
