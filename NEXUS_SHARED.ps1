@@ -427,29 +427,300 @@ function Download-NexusArquivo {
     return $false
 }
 
+function Invoke-NexusWebDavRequest {
+    param(
+        [string]$Url,
+        [string]$Metodo,
+        [hashtable]$Headers,
+        [hashtable]$HeadersExtra,
+        [int]$TimeoutMs = 1800000
+    )
+
+    $req = [System.Net.HttpWebRequest]::Create($Url)
+    $req.Method = $Metodo
+    $req.Timeout = $TimeoutMs
+    $req.ReadWriteTimeout = $TimeoutMs
+
+    if ($Headers -and $Headers.Authorization) {
+        $req.Headers.Add("Authorization", $Headers.Authorization)
+    }
+
+    if ($HeadersExtra) {
+        foreach ($key in $HeadersExtra.Keys) {
+            $req.Headers.Add($key, [string]$HeadersExtra[$key])
+        }
+    }
+
+    $resp = $req.GetResponse()
+    $resp.Close()
+}
+
+function Invoke-NexusWebDavPutRange {
+    param(
+        [string]$Url,
+        [string]$Arquivo,
+        [int64]$Offset,
+        [int64]$Quantidade,
+        [hashtable]$Headers,
+        [hashtable]$HeadersExtra,
+        [int]$BufferSize = 1048576,
+        [int]$TimeoutMs = 1800000
+    )
+
+    $entrada = $null
+    $saida = $null
+    $resp = $null
+
+    try {
+        $req = [System.Net.HttpWebRequest]::Create($Url)
+        $req.Method = "PUT"
+        $req.ContentType = "application/octet-stream"
+        $req.ContentLength = $Quantidade
+        $req.AllowWriteStreamBuffering = $false
+        $req.SendChunked = $false
+        $req.Timeout = $TimeoutMs
+        $req.ReadWriteTimeout = $TimeoutMs
+
+        if ($Headers -and $Headers.Authorization) {
+            $req.Headers.Add("Authorization", $Headers.Authorization)
+        }
+
+        if ($HeadersExtra) {
+            foreach ($key in $HeadersExtra.Keys) {
+                $req.Headers.Add($key, [string]$HeadersExtra[$key])
+            }
+        }
+
+        $entrada = [System.IO.File]::OpenRead($Arquivo)
+        $entrada.Seek($Offset, [System.IO.SeekOrigin]::Begin) | Out-Null
+        $saida = $req.GetRequestStream()
+
+        $buffer = New-Object byte[] $BufferSize
+        $restante = $Quantidade
+
+        while ($restante -gt 0) {
+            $ler = [Math]::Min([int64]$buffer.Length, $restante)
+            $lidos = $entrada.Read($buffer, 0, [int]$ler)
+
+            if ($lidos -le 0) {
+                throw "Leitura interrompida antes do fim do chunk."
+            }
+
+            $saida.Write($buffer, 0, $lidos)
+            $restante -= $lidos
+        }
+
+        $saida.Close()
+        $saida = $null
+
+        $resp = $req.GetResponse()
+        $resp.Close()
+        $resp = $null
+    }
+    finally {
+        if ($saida) { $saida.Close() }
+        if ($entrada) { $entrada.Close() }
+        if ($resp) { $resp.Close() }
+    }
+}
+
+function Upload-NexusArquivoChunked {
+    param(
+        [string]$Url,
+        [string]$Arquivo,
+        [string]$Nome,
+        [hashtable]$Headers,
+        [int]$MaxTentativas = 3,
+        [int]$BufferSize = 1048576,
+        [int]$TimeoutMs = 1800000,
+        [int64]$TamanhoChunk = 10485760
+    )
+
+    $info = Get-Item -LiteralPath $Arquivo -ErrorAction Stop
+
+    if ($Url -notmatch '^(?<DavRoot>.+/remote\.php/dav/)files/(?<User>[^/]+)/(?<Path>.+)$') {
+        return $false
+    }
+
+    $davRoot = $matches.DavRoot
+    $user = $matches.User
+    $uploadId = "nexus-{0}" -f ([guid]::NewGuid().ToString())
+    $uploadUrl = "${davRoot}uploads/$user/$uploadId"
+    $headersDestino = @{
+        Destination = $Url
+        "OC-Total-Length" = $info.Length
+    }
+
+    $timerUpload = [System.Diagnostics.Stopwatch]::StartNew()
+    $criouPasta = $false
+
+    try {
+        Invoke-NexusWebDavRequest `
+            -Url $uploadUrl `
+            -Metodo "MKCOL" `
+            -Headers $Headers `
+            -HeadersExtra $headersDestino `
+            -TimeoutMs $TimeoutMs
+
+        $criouPasta = $true
+
+        $totalChunks = [int][Math]::Ceiling($info.Length / [double]$TamanhoChunk)
+
+        if ($totalChunks -gt 10000) {
+            throw "Arquivo grande demais para o tamanho de chunk atual."
+        }
+
+        for ($chunk = 1; $chunk -le $totalChunks; $chunk++) {
+            $offset = [int64](($chunk - 1) * $TamanhoChunk)
+            $quantidade = [Math]::Min($TamanhoChunk, $info.Length - $offset)
+            $chunkNome = "{0:D5}" -f $chunk
+            $chunkUrl = "$uploadUrl/$chunkNome"
+
+            for ($tentativa = 1; $tentativa -le $MaxTentativas; $tentativa++) {
+                try {
+                    Write-Host ("`rEnviando: {0} [{1}/{2}]" -f $Nome, $chunk, $totalChunks) -NoNewline
+
+                    Invoke-NexusWebDavPutRange `
+                        -Url $chunkUrl `
+                        -Arquivo $info.FullName `
+                        -Offset $offset `
+                        -Quantidade $quantidade `
+                        -Headers $Headers `
+                        -HeadersExtra $headersDestino `
+                        -BufferSize $BufferSize `
+                        -TimeoutMs $TimeoutMs
+
+                    break
+                }
+                catch {
+                    if ($tentativa -ge $MaxTentativas) {
+                        throw
+                    }
+
+                    Start-Sleep -Seconds (2 * $tentativa)
+                }
+            }
+        }
+
+        Invoke-NexusWebDavRequest `
+            -Url "$uploadUrl/.file" `
+            -Metodo "MOVE" `
+            -Headers $Headers `
+            -HeadersExtra $headersDestino `
+            -TimeoutMs $TimeoutMs
+
+        $timerUpload.Stop()
+        $mb = if ($info.Length -gt 0) { $info.Length / 1MB } else { 0 }
+        $velocidade = if ($timerUpload.Elapsed.TotalSeconds -gt 0) {
+            " ({0:N2} MB/s)" -f ($mb / $timerUpload.Elapsed.TotalSeconds)
+        }
+        else {
+            ""
+        }
+
+        Write-Host "  OK$velocidade" -ForegroundColor Green
+        return $true
+    }
+    catch {
+        Write-Host "  ERRO" -ForegroundColor Red
+        Mostrar-Detalhe $_.Exception.Message
+        return $false
+    }
+    finally {
+        if ($criouPasta) {
+            try {
+                Invoke-NexusWebDavRequest `
+                    -Url $uploadUrl `
+                    -Metodo "DELETE" `
+                    -Headers $Headers `
+                    -HeadersExtra $null `
+                    -TimeoutMs $TimeoutMs
+            }
+            catch {}
+        }
+    }
+}
+
 function Upload-NexusArquivo {
     param(
         [string]$Url,
         [string]$Arquivo,
         [string]$Nome,
         [hashtable]$Headers,
-        [int]$MaxTentativas = 3
+        [int]$MaxTentativas = 3,
+        [int]$BufferSize = 1048576,
+        [int]$TimeoutMs = 1800000,
+        [int64]$TamanhoChunk = 10485760,
+        [int64]$LimiteChunkedBytes = 52428800
     )
 
+    $infoInicial = Get-Item -LiteralPath $Arquivo -ErrorAction Stop
+
+    if ($infoInicial.Length -ge $LimiteChunkedBytes) {
+        Write-Host "Enviando: $Nome" -NoNewline
+        return Upload-NexusArquivoChunked `
+            -Url $Url `
+            -Arquivo $Arquivo `
+            -Nome $Nome `
+            -Headers $Headers `
+            -MaxTentativas $MaxTentativas `
+            -BufferSize $BufferSize `
+            -TimeoutMs $TimeoutMs `
+            -TamanhoChunk $TamanhoChunk
+    }
+
     for ($tentativa = 1; $tentativa -le $MaxTentativas; $tentativa++) {
+        $entrada = $null
+        $saida = $null
+        $resp = $null
+
         try {
             $sufixo = if ($MaxTentativas -gt 1 -and $tentativa -gt 1) { " (tentativa $tentativa)" } else { "" }
             Write-Host "Enviando: $Nome$sufixo" -NoNewline
 
-            Invoke-WebRequest `
-                -Uri $Url `
-                -Method Put `
-                -InFile $Arquivo `
-                -Headers $Headers `
-                -UseBasicParsing `
-                -ErrorAction Stop | Out-Null
+            $info = Get-Item -LiteralPath $Arquivo -ErrorAction Stop
+            $timerUpload = [System.Diagnostics.Stopwatch]::StartNew()
 
-            Write-Host "  OK" -ForegroundColor Green
+            [System.Net.ServicePointManager]::Expect100Continue = $false
+
+            $req = [System.Net.HttpWebRequest]::Create($Url)
+            $req.Method = "PUT"
+            $req.ContentType = "application/octet-stream"
+            $req.ContentLength = $info.Length
+            $req.AllowWriteStreamBuffering = $false
+            $req.SendChunked = $false
+            $req.Timeout = $TimeoutMs
+            $req.ReadWriteTimeout = $TimeoutMs
+
+            if ($Headers -and $Headers.Authorization) {
+                $req.Headers.Add("Authorization", $Headers.Authorization)
+            }
+
+            $buffer = New-Object byte[] $BufferSize
+            $entrada = [System.IO.File]::OpenRead($info.FullName)
+            $saida = $req.GetRequestStream()
+
+            while (($lidos = $entrada.Read($buffer, 0, $buffer.Length)) -gt 0) {
+                $saida.Write($buffer, 0, $lidos)
+            }
+
+            $saida.Close()
+            $saida = $null
+
+            $resp = $req.GetResponse()
+            $resp.Close()
+            $resp = $null
+
+            $timerUpload.Stop()
+            $mb = if ($info.Length -gt 0) { $info.Length / 1MB } else { 0 }
+            $velocidade = if ($timerUpload.Elapsed.TotalSeconds -gt 0) {
+                " ({0:N2} MB/s)" -f ($mb / $timerUpload.Elapsed.TotalSeconds)
+            }
+            else {
+                ""
+            }
+
+            Write-Host "  OK$velocidade" -ForegroundColor Green
             return $true
         }
         catch {
@@ -461,6 +732,19 @@ function Upload-NexusArquivo {
             }
             else {
                 Mostrar-Detalhe $_.Exception.Message
+            }
+        }
+        finally {
+            if ($saida) {
+                $saida.Close()
+            }
+
+            if ($entrada) {
+                $entrada.Close()
+            }
+
+            if ($resp) {
+                $resp.Close()
             }
         }
     }
