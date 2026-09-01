@@ -108,109 +108,12 @@ function Abrir-PastaSistemaNexus {
     Abrir-PastaNexus $pasta
 }
 
-function Explorar-ArquivosUteisNexus {
-    $pathAtual = "/UTEIS"
-    $baixouAlgo = $false
-
-    $destino = Selecionar-PastaNexus -Titulo "Selecione onde salvar os utilitarios"
-
-    if (-not $destino) {
-        Mostrar-Aviso "Nenhuma pasta selecionada."
-        return
-    }
-
-    while ($true) {
-        Mostrar-TituloNexus "EXPLORAR ARQUIVOS UTEIS"
-
-        Write-Host "Caminho: $pathAtual" -ForegroundColor Cyan
-        Write-Host ""
-
-        $itens = @(Get-NexusCloudItemsComTipo -Cloud $script:Cloud -Path $pathAtual -Credencial $script:Cred)
-
-        Write-Host " 0 - Voltar"
-        Write-Host ""
-
-        for ($i = 0; $i -lt $itens.Count; $i++) {
-            $tipo = if ($itens[$i].Tipo -eq "PASTA") { "[P]" } else { "[A]" }
-            Write-Host (" {0} - {1} {2}" -f ($i + 1), $tipo, $itens[$i].Nome)
-        }
-
-        Write-Host ""
-
-        $op = (Read-Host "Escolha").Trim()
-
-        if ($op -eq "0") {
-            if ($pathAtual -eq "/UTEIS") {
-                break
-            }
-
-            $partes = @($pathAtual -split "/" | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
-            if ($partes.Count -le 1) {
-                $pathAtual = "/UTEIS"
-            }
-            else {
-                $pathAtual = "/" + (($partes[0..($partes.Count - 2)]) -join "/")
-            }
-
-            continue
-        }
-
-        if ($op -notmatch '^\d+$') {
-            continue
-        }
-
-        $idx = [int]$op - 1
-
-        if ($idx -lt 0 -or $idx -ge $itens.Count) {
-            continue
-        }
-
-        $item = $itens[$idx]
-
-        if ($item.Tipo -eq "PASTA") {
-            $pathAtual = "$pathAtual/$($item.Nome)"
-            continue
-        }
-
-        Mostrar-TituloNexus "DOWNLOAD UTILITARIO"
-
-        Write-Host "Arquivo: $($item.Nome)" -ForegroundColor Cyan
-        Write-Host "Destino: $destino" -ForegroundColor Cyan
-        Write-Host ""
-
-        if (-not (Confirmar-Acao "Baixar arquivo")) {
-            continue
-        }
-
-        $timer = Iniciar-TimerNexus
-
-        $url = "$script:Cloud$pathAtual/$($item.Nome)"
-        $saida = Join-Path $destino $item.Nome
-
-        if (Download-NexusArquivo -Url $url -Destino $saida -Nome $item.Nome -Headers $script:Headers) {
-            Mostrar-Sucesso "Download concluido."
-            $baixouAlgo = $true
-        }
-        else {
-            Mostrar-Erro "Falha no download."
-        }
-
-        Mostrar-TempoExecucao -Inicio $timer -Nome "download"
-        Start-Sleep -Seconds 1
-    }
-
-    if ($baixouAlgo) {
-        Abrir-PastaNexus $destino
-    }
-}
-
 while ($true) {
     Mostrar-TituloNexus "UTILITARIOS"
 
     Write-Host "1 - Corrigir WMI"
     Write-Host "2 - Instalar/Verificar ODBC"
     Write-Host "3 - Abrir Pasta do Sistema"
-    Write-Host "4 - Explorar Arquivos Uteis"
     Write-Host "0 - Voltar"
     Write-Host ""
 
@@ -220,8 +123,7 @@ while ($true) {
         "1" { Corrigir-WmiNexus; Read-Host "`nENTER para voltar" | Out-Null }
         "2" { Instalar-VerificarOdbcNexus }
         "3" { Abrir-PastaSistemaNexus; Read-Host "`nENTER para voltar" | Out-Null }
-        "4" { Explorar-ArquivosUteisNexus }
-        "0" { break }
+        "0" { return }
         default { continue }
     }
 }
