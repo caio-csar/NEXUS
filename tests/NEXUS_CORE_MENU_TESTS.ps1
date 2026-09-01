@@ -58,6 +58,11 @@ Assert-Contains `
     -Expected '6 - Utilitarios' `
     -Message "O menu principal deve expor Utilitarios na opcao 6."
 
+Assert-Contains `
+    -Text $core `
+    -Expected 'SemPausaRetorno = $true' `
+    -Message "Utilitarios deve voltar direto ao menu principal sem pausa extra."
+
 Assert-NotContains `
     -Text $core `
     -Unexpected '7 - Explorar Utilitarios' `
