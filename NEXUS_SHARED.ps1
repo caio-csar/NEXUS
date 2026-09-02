@@ -510,6 +510,76 @@ function Mostrar-ProgressoBytesNexus {
     Write-Host ("  Falta   : {0} bytes  ({1:N2}%)" -f (Formatar-BytesAlinhadoNexus -Bytes $falta -Total $Total), $percentual) -ForegroundColor Yellow
 }
 
+function Write-LinhaPainelUploadNexus {
+    param(
+        [string]$Texto,
+        [string]$Cor = "Gray"
+    )
+
+    try {
+        $larguraConsole = [Math]::Max(1, [Console]::BufferWidth - 1)
+        if ($Texto.Length -lt $larguraConsole) {
+            $Texto = $Texto.PadRight($larguraConsole, " ")
+        }
+    }
+    catch {}
+
+    Write-Host $Texto -ForegroundColor $Cor
+}
+
+function Mostrar-PainelUploadNexus {
+    param(
+        [string]$Nome,
+        [int]$ChunkAtual,
+        [int]$TotalChunks,
+        [int64]$Enviado,
+        [int64]$Total,
+        [switch]$Finalizar
+    )
+
+    if ($Total -lt 0) {
+        $Total = 0
+    }
+
+    if ($Enviado -lt 0) {
+        $Enviado = 0
+    }
+
+    if ($Enviado -gt $Total) {
+        $Enviado = $Total
+    }
+
+    $falta = $Total - $Enviado
+    $percentual = if ($Total -gt 0) { ($Enviado / $Total) * 100 } else { 0 }
+    $parte = if ($TotalChunks -gt 0) { "{0} / {1}" -f $ChunkAtual, $TotalChunks } else { "-" }
+
+    try {
+        if (-not $script:NexusUploadPainelAtivo) {
+            Write-Host ""
+            $script:NexusUploadPainelTop = [Console]::CursorTop
+            $script:NexusUploadPainelAtivo = $true
+        }
+        else {
+            [Console]::SetCursorPosition(0, $script:NexusUploadPainelTop)
+        }
+    }
+    catch {
+        Write-Host ""
+    }
+
+    Write-LinhaPainelUploadNexus -Texto ("Arquivo : {0}" -f $Nome) -Cor "Cyan"
+    Write-LinhaPainelUploadNexus -Texto ("Parte   : {0}" -f $parte) -Cor "Gray"
+    Write-LinhaPainelUploadNexus -Texto ("Enviado : {0} bytes" -f (Formatar-BytesAlinhadoNexus -Bytes $Enviado -Total $Total)) -Cor "Cyan"
+    Write-LinhaPainelUploadNexus -Texto ("Total   : {0} bytes" -f (Formatar-BytesAlinhadoNexus -Bytes $Total -Total $Total)) -Cor "DarkCyan"
+    Write-LinhaPainelUploadNexus -Texto ("Falta   : {0} bytes" -f (Formatar-BytesAlinhadoNexus -Bytes $falta -Total $Total)) -Cor "Yellow"
+    Write-LinhaPainelUploadNexus -Texto ("Progresso: {0:N2}%" -f $percentual) -Cor "Yellow"
+
+    if ($Finalizar) {
+        $script:NexusUploadPainelAtivo = $false
+        Write-Host ""
+    }
+}
+
 function Invoke-NexusWebDavRequest {
     param(
         [string]$Url,
@@ -646,13 +716,20 @@ function Upload-NexusArquivoChunked {
             -TimeoutMs $TimeoutMs
 
         $criouPasta = $true
-        Mostrar-ProgressoBytesNexus -Enviado 0 -Total $info.Length
 
         $totalChunks = [int][Math]::Ceiling($info.Length / [double]$TamanhoChunk)
 
         if ($totalChunks -gt 10000) {
             throw "Arquivo grande demais para o tamanho de chunk atual."
         }
+
+        $script:NexusUploadPainelAtivo = $false
+        Mostrar-PainelUploadNexus `
+            -Nome $Nome `
+            -ChunkAtual 0 `
+            -TotalChunks $totalChunks `
+            -Enviado 0 `
+            -Total $info.Length
 
         for ($chunk = 1; $chunk -le $totalChunks; $chunk++) {
             $offset = [int64](($chunk - 1) * $TamanhoChunk)
@@ -662,8 +739,6 @@ function Upload-NexusArquivoChunked {
 
             for ($tentativa = 1; $tentativa -le $MaxTentativas; $tentativa++) {
                 try {
-                    Write-Host ("`rEnviando: {0} [{1}/{2}]" -f $Nome, $chunk, $totalChunks) -NoNewline
-
                     Invoke-NexusWebDavPutRange `
                         -Url $chunkUrl `
                         -Arquivo $info.FullName `
@@ -675,7 +750,12 @@ function Upload-NexusArquivoChunked {
                         -TimeoutMs $TimeoutMs
 
                     $enviado = [Math]::Min([int64]($offset + $quantidade), $info.Length)
-                    Mostrar-ProgressoBytesNexus -Enviado $enviado -Total $info.Length
+                    Mostrar-PainelUploadNexus `
+                        -Nome $Nome `
+                        -ChunkAtual $chunk `
+                        -TotalChunks $totalChunks `
+                        -Enviado $enviado `
+                        -Total $info.Length
                     break
                 }
                 catch {
@@ -694,6 +774,14 @@ function Upload-NexusArquivoChunked {
             -Headers $Headers `
             -HeadersExtra $headersDestino `
             -TimeoutMs $TimeoutMs
+
+        Mostrar-PainelUploadNexus `
+            -Nome $Nome `
+            -ChunkAtual $totalChunks `
+            -TotalChunks $totalChunks `
+            -Enviado $info.Length `
+            -Total $info.Length `
+            -Finalizar
 
         $timerUpload.Stop()
         $mb = if ($info.Length -gt 0) { $info.Length / 1MB } else { 0 }
