@@ -50,4 +50,34 @@ Assert-Contains `
     -Expected 'TamanhoChunk' `
     -Message "Upload deve expor tamanho de chunk configuravel."
 
+Assert-Contains `
+    -Text $shared `
+    -Expected 'Formatar-BytesAlinhadoNexus' `
+    -Message "Upload deve formatar bytes alinhados para comparar casas."
+
+Assert-Contains `
+    -Text $shared `
+    -Expected 'Mostrar-ProgressoBytesNexus' `
+    -Message "Upload deve exibir progresso em bytes."
+
+Assert-Contains `
+    -Text $shared `
+    -Expected 'Enviado :' `
+    -Message "Progresso deve mostrar bytes enviados."
+
+Assert-Contains `
+    -Text $shared `
+    -Expected 'Total   :' `
+    -Message "Progresso deve mostrar total de bytes alinhado."
+
+Assert-Contains `
+    -Text $shared `
+    -Expected 'Falta   :' `
+    -Message "Progresso deve mostrar bytes restantes alinhado."
+
+Assert-Contains `
+    -Text $shared `
+    -Expected 'PadLeft' `
+    -Message "Numeros de bytes devem ser alinhados por largura."
+
 Write-Host "NEXUS_UPLOAD_GRANDE_TESTS OK" -ForegroundColor Green
