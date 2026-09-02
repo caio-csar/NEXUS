@@ -267,27 +267,28 @@ function Executar-Modulo {
 }
 
 function Mostrar-MenuPrincipalNexus {
-    Write-Host "╔════════════════════════════════════════╗" -ForegroundColor Cyan
-    Write-Host "║              NEXUS MAXDATA            ║" -ForegroundColor Cyan
-    Write-Host "║        Automacao tecnica de campo     ║" -ForegroundColor DarkCyan
-    Write-Host "╚════════════════════════════════════════╝" -ForegroundColor Cyan
+    Write-Host "NEXUS  |  MAXDATA" -ForegroundColor Cyan
+    Write-Host "Automacao tecnica" -ForegroundColor DarkGray
+    Write-Host ""
+    Write-Host "----------------------------------------" -ForegroundColor DarkGray
     Write-Host ""
 
-    Write-Host "  PRINCIPAL" -ForegroundColor White
+    Write-Host "PRINCIPAL" -ForegroundColor White
     Write-Host "  [1] Instalar Sistema" -ForegroundColor Gray
     Write-Host "  [2] Atualizar Sistema" -ForegroundColor Gray
     Write-Host "  [3] Baixar Ultima Versao" -ForegroundColor Gray
     Write-Host "  [4] Baixar Pastas Atualizadas" -ForegroundColor Gray
     Write-Host ""
 
-    Write-Host "  CLOUD" -ForegroundColor Cyan
+    Write-Host "CLOUD" -ForegroundColor Cyan
     Write-Host "  [5] Transferencia Cloud" -ForegroundColor Gray
     Write-Host ""
 
-    Write-Host "  SUPORTE" -ForegroundColor Yellow
+    Write-Host "SUPORTE" -ForegroundColor Yellow
     Write-Host "  [6] Utilitarios" -ForegroundColor Gray
     Write-Host ""
 
+    Write-Host "----------------------------------------" -ForegroundColor DarkGray
     Write-Host "  [0] Sair" -ForegroundColor DarkGray
     Write-Host ""
 }
