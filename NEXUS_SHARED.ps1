@@ -427,6 +427,43 @@ function Download-NexusArquivo {
     return $false
 }
 
+function Formatar-BytesAlinhadoNexus {
+    param(
+        [int64]$Bytes,
+        [int64]$Total
+    )
+
+    $largura = ([string]$Total).Length
+    return ([string]$Bytes).PadLeft($largura, " ")
+}
+
+function Mostrar-ProgressoBytesNexus {
+    param(
+        [int64]$Enviado,
+        [int64]$Total
+    )
+
+    if ($Total -lt 0) {
+        $Total = 0
+    }
+
+    if ($Enviado -lt 0) {
+        $Enviado = 0
+    }
+
+    if ($Enviado -gt $Total) {
+        $Enviado = $Total
+    }
+
+    $falta = $Total - $Enviado
+    $percentual = if ($Total -gt 0) { ($Enviado / $Total) * 100 } else { 0 }
+
+    Write-Host ""
+    Write-Host ("  Enviado : {0} bytes" -f (Formatar-BytesAlinhadoNexus -Bytes $Enviado -Total $Total)) -ForegroundColor Cyan
+    Write-Host ("  Total   : {0} bytes" -f (Formatar-BytesAlinhadoNexus -Bytes $Total -Total $Total)) -ForegroundColor DarkCyan
+    Write-Host ("  Falta   : {0} bytes  ({1:N2}%)" -f (Formatar-BytesAlinhadoNexus -Bytes $falta -Total $Total), $percentual) -ForegroundColor Yellow
+}
+
 function Invoke-NexusWebDavRequest {
     param(
         [string]$Url,
@@ -563,6 +600,7 @@ function Upload-NexusArquivoChunked {
             -TimeoutMs $TimeoutMs
 
         $criouPasta = $true
+        Mostrar-ProgressoBytesNexus -Enviado 0 -Total $info.Length
 
         $totalChunks = [int][Math]::Ceiling($info.Length / [double]$TamanhoChunk)
 
@@ -590,6 +628,8 @@ function Upload-NexusArquivoChunked {
                         -BufferSize $BufferSize `
                         -TimeoutMs $TimeoutMs
 
+                    $enviado = [Math]::Min([int64]($offset + $quantidade), $info.Length)
+                    Mostrar-ProgressoBytesNexus -Enviado $enviado -Total $info.Length
                     break
                 }
                 catch {
