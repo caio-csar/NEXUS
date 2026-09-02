@@ -62,6 +62,26 @@ Assert-Contains `
 
 Assert-Contains `
     -Text $shared `
+    -Expected 'Mostrar-PainelTransferenciaNexus' `
+    -Message "Upload grande deve usar painel de transferencia compacto."
+
+Assert-Contains `
+    -Text $shared `
+    -Expected 'SetCursorPosition' `
+    -Message "Painel de transferencia deve reaproveitar a mesma area do console."
+
+Assert-Contains `
+    -Text $shared `
+    -Expected 'Parte   :' `
+    -Message "Painel de upload deve mostrar parte atual e total de partes."
+
+Assert-Contains `
+    -Text $shared `
+    -Expected '-ChunkAtual $chunk' `
+    -Message "Upload chunked deve informar a parte atual ao painel."
+
+Assert-Contains `
+    -Text $shared `
     -Expected 'Enviado :' `
     -Message "Progresso deve mostrar bytes enviados."
 
