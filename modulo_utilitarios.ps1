@@ -296,15 +296,26 @@ function Abrir-PastaSistemaNexus {
     Abrir-PastaNexus $pasta
 }
 
-while ($true) {
-    Mostrar-TituloNexus "UTILITARIOS"
-
-    Write-Host "1 - Corrigir WMI"
-    Write-Host "2 - Instalar/Verificar ODBC"
-    Write-Host "3 - Registrar Servidor no Cloud"
-    Write-Host "4 - Abrir Pasta do Sistema"
-    Write-Host "0 - Voltar"
+function Mostrar-MenuUtilitariosNexus {
+    Write-Host "╔══════════ UTILITARIOS ══════════╗" -ForegroundColor Cyan
+    Write-Host "║             NEXUS               ║" -ForegroundColor Cyan
+    Write-Host "╚═════════════════════════════════╝" -ForegroundColor Cyan
     Write-Host ""
+
+    Write-Host "  SUPORTE" -ForegroundColor Yellow
+    Write-Host "  [1] Corrigir WMI" -ForegroundColor Gray
+    Write-Host "  [2] Instalar/Verificar ODBC" -ForegroundColor Gray
+    Write-Host "  [3] Registrar Servidor no Cloud" -ForegroundColor Gray
+    Write-Host "  [4] Abrir Pasta do Sistema" -ForegroundColor Gray
+    Write-Host ""
+
+    Write-Host "  [0] Voltar" -ForegroundColor DarkGray
+    Write-Host ""
+}
+
+while ($true) {
+    Clear-Host
+    Mostrar-MenuUtilitariosNexus
 
     $op = (Read-Host "Escolha").Trim()
 
