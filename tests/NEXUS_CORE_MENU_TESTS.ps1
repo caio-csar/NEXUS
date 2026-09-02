@@ -60,8 +60,28 @@ Assert-Contains `
 
 Assert-Contains `
     -Text $core `
-    -Expected 'NEXUS MAXDATA' `
+    -Expected 'NEXUS  |  MAXDATA' `
     -Message "O menu principal deve exibir a identidade NEXUS MAXDATA."
+
+Assert-Contains `
+    -Text $core `
+    -Expected 'Automacao tecnica' `
+    -Message "O menu principal deve ter subtitulo sobrio."
+
+Assert-Contains `
+    -Text $core `
+    -Expected '----------------------------------------' `
+    -Message "O menu principal deve usar divisoria simples."
+
+Assert-NotContains `
+    -Text $core `
+    -Unexpected '╔' `
+    -Message "O menu principal nao deve usar moldura pesada."
+
+Assert-NotContains `
+    -Text $core `
+    -Unexpected '╚' `
+    -Message "O menu principal nao deve usar moldura pesada."
 
 Assert-Contains `
     -Text $core `
