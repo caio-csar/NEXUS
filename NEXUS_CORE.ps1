@@ -135,13 +135,24 @@ function New-CoreHeaders {
     }
 }
 
+function Get-UrlSemCacheNexus {
+    param([string]$Url)
+
+    $sep = if ($Url.Contains("?")) { "&" } else { "?" }
+    return "$Url${sep}cb=$([DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds())"
+}
+
 function Baixar-ArquivoCore {
     param(
         [string]$NomeArquivo
     )
 
     $temp = Join-Path $env:TEMP $NomeArquivo
-    $url  = "$script:NexusRawBase/$NomeArquivo"
+    $url  = Get-UrlSemCacheNexus "$script:NexusRawBase/$NomeArquivo"
+    $downloadHeaders = @{
+        "Cache-Control" = "no-cache"
+        "Pragma" = "no-cache"
+    }
 
     $maxTentativas = 3
 
@@ -150,6 +161,7 @@ function Baixar-ArquivoCore {
             Invoke-WebRequest `
                 -Uri $url `
                 -OutFile $temp `
+                -Headers $downloadHeaders `
                 -UseBasicParsing `
                 -ErrorAction Stop
 
