@@ -35,6 +35,16 @@ Assert-Contains `
 
 Assert-Contains `
     -Text $util `
+    -Expected 'NEXUS' `
+    -Message "O menu de Utilitarios deve exibir a identidade NEXUS."
+
+Assert-Contains `
+    -Text $util `
+    -Expected 'SUPORTE' `
+    -Message "O menu de Utilitarios deve destacar a area de suporte."
+
+Assert-Contains `
+    -Text $util `
     -Expected 'Corrigir WMI' `
     -Message "Utilitarios deve ter a opcao Corrigir WMI."
 
