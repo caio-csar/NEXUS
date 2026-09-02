@@ -4,6 +4,9 @@
 
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 
+$script:NexusProcessoInicioConfirmacao = $null
+$script:NexusProcessoTempoMostrado = $false
+
 # ============================================
 # FUNCOES - INTERFACE
 # ============================================
@@ -43,6 +46,8 @@ function Mostrar-Detalhe {
 function Pausar-Nexus {
     param([int]$ChamadoPeloCore = 0)
 
+    Mostrar-TempoDesdeConfirmacaoNexus
+
     if ($ChamadoPeloCore -ne 1) {
         Read-Host "`nPressione ENTER para continuar"
     }
@@ -54,7 +59,13 @@ function Confirmar-Acao {
     )
 
     $resp = (Read-Host "$Mensagem (S/N)").Trim().ToUpper()
-    return ($resp -eq "S")
+
+    if ($resp -eq "S") {
+        Iniciar-TempoConfirmacaoNexus
+        return $true
+    }
+
+    return $false
 }
 
 # ============================================
@@ -187,6 +198,36 @@ function Iniciar-TimerNexus {
     return Get-Date
 }
 
+function Iniciar-TempoConfirmacaoNexus {
+    $script:NexusProcessoInicioConfirmacao = Get-Date
+    $script:NexusProcessoTempoMostrado = $false
+}
+
+function Limpar-TempoConfirmacaoNexus {
+    $script:NexusProcessoInicioConfirmacao = $null
+    $script:NexusProcessoTempoMostrado = $false
+}
+
+function Mostrar-TempoDesdeConfirmacaoNexus {
+    param(
+        [string]$Nome = "processo"
+    )
+
+    if (-not $script:NexusProcessoInicioConfirmacao) {
+        return
+    }
+
+    if ($script:NexusProcessoTempoMostrado) {
+        return
+    }
+
+    $tempo = (Get-Date) - $script:NexusProcessoInicioConfirmacao
+    Write-Host ""
+    Write-Host "Tempo desde confirmacao ($Nome): $($tempo.ToString('hh\:mm\:ss'))" -ForegroundColor Cyan
+
+    $script:NexusProcessoTempoMostrado = $true
+}
+
 function Mostrar-TempoExecucao {
     param(
         [datetime]$Inicio,
@@ -195,7 +236,12 @@ function Mostrar-TempoExecucao {
 
     $tempo = (Get-Date) - $Inicio
     Write-Host ""
-    Write-Host "Tempo de execucao ($Nome): $($tempo.ToString('hh\:mm\:ss'))" -ForegroundColor Cyan
+    $rotulo = if ($script:NexusProcessoInicioConfirmacao) { "Tempo desde confirmacao" } else { "Tempo de execucao" }
+    Write-Host "$rotulo ($Nome): $($tempo.ToString('hh\:mm\:ss'))" -ForegroundColor Cyan
+
+    if ($script:NexusProcessoInicioConfirmacao) {
+        $script:NexusProcessoTempoMostrado = $true
+    }
 }
 
 # ============================================
