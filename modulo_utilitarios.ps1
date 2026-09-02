@@ -30,12 +30,17 @@ function Baixar-ArquivoPublicoUtilitario {
         [string]$Nome
     )
 
-    $url = "$script:NexusRawBase/$Caminho"
+    $url = Get-UrlSemCacheUtilitario "$script:NexusRawBase/$Caminho"
+    $downloadHeaders = @{
+        "Cache-Control" = "no-cache"
+        "Pragma" = "no-cache"
+    }
 
     try {
         Invoke-WebRequest `
             -Uri $url `
             -OutFile $Destino `
+            -Headers $downloadHeaders `
             -UseBasicParsing `
             -ErrorAction Stop
 
@@ -46,6 +51,13 @@ function Baixar-ArquivoPublicoUtilitario {
         Mostrar-Detalhe $_.Exception.Message
         return $false
     }
+}
+
+function Get-UrlSemCacheUtilitario {
+    param([string]$Url)
+
+    $sep = if ($Url.Contains("?")) { "&" } else { "?" }
+    return "$Url${sep}cb=$([DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds())"
 }
 
 function Corrigir-WmiNexus {
