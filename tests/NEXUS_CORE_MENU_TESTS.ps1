@@ -55,8 +55,28 @@ Assert-Contains `
 
 Assert-Contains `
     -Text $core `
-    -Expected '6 - Utilitarios' `
+    -Expected '[6] Utilitarios' `
     -Message "O menu principal deve expor Utilitarios na opcao 6."
+
+Assert-Contains `
+    -Text $core `
+    -Expected 'NEXUS MAXDATA' `
+    -Message "O menu principal deve exibir a identidade NEXUS MAXDATA."
+
+Assert-Contains `
+    -Text $core `
+    -Expected 'PRINCIPAL' `
+    -Message "O menu principal deve separar as acoes principais."
+
+Assert-Contains `
+    -Text $core `
+    -Expected 'CLOUD' `
+    -Message "O menu principal deve destacar a area Cloud."
+
+Assert-Contains `
+    -Text $core `
+    -Expected 'SUPORTE' `
+    -Message "O menu principal deve destacar a area de suporte."
 
 Assert-Contains `
     -Text $core `
