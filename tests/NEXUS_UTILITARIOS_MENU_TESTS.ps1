@@ -40,6 +40,21 @@ Assert-Contains `
 
 Assert-Contains `
     -Text $util `
+    -Expected 'NEXUS  |  UTILITARIOS' `
+    -Message "O menu de Utilitarios deve usar cabecalho sobrio."
+
+Assert-Contains `
+    -Text $util `
+    -Expected '----------------------------------------' `
+    -Message "O menu de Utilitarios deve usar divisoria simples."
+
+Assert-NotContains `
+    -Text $util `
+    -Unexpected '╔' `
+    -Message "O menu de Utilitarios nao deve usar moldura pesada."
+
+Assert-Contains `
+    -Text $util `
     -Expected 'SUPORTE' `
     -Message "O menu de Utilitarios deve destacar a area de suporte."
 
