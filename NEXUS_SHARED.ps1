@@ -443,21 +443,88 @@ function Download-NexusArquivo {
     )
 
     for ($tentativa = 1; $tentativa -le $MaxTentativas; $tentativa++) {
+        $entrada = $null
+        $saida = $null
+        $resp = $null
+
         try {
             $sufixo = if ($MaxTentativas -gt 1 -and $tentativa -gt 1) { " (tentativa $tentativa)" } else { "" }
             Write-Host "Baixando: $Nome$sufixo" -NoNewline
 
-            Invoke-WebRequest `
-                -Uri $Url `
-                -OutFile $Destino `
-                -Headers $Headers `
-                -UseBasicParsing `
-                -ErrorAction Stop
+            $timerDownload = [System.Diagnostics.Stopwatch]::StartNew()
+            $timerPainel = [System.Diagnostics.Stopwatch]::StartNew()
 
-            Write-Host "  OK" -ForegroundColor Green
+            $req = [System.Net.HttpWebRequest]::Create($Url)
+            $req.Method = "GET"
+            $req.Timeout = 1800000
+            $req.ReadWriteTimeout = 1800000
+
+            if ($Headers) {
+                foreach ($key in $Headers.Keys) {
+                    $req.Headers.Add($key, [string]$Headers[$key])
+                }
+            }
+
+            $resp = $req.GetResponse()
+            $total = [int64]$resp.ContentLength
+            if ($total -lt 0) {
+                $total = 0
+            }
+
+            $entrada = $resp.GetResponseStream()
+            $saida = [System.IO.File]::Create($Destino)
+            $buffer = New-Object byte[] 1048576
+            $baixado = [int64]0
+
+            $script:NexusTransferenciaPainelAtivo = $false
+            Mostrar-PainelTransferenciaNexus `
+                -Operacao "Download" `
+                -Nome $Nome `
+                -Enviado $baixado `
+                -Total $total
+
+            while (($lidos = $entrada.Read($buffer, 0, $buffer.Length)) -gt 0) {
+                $saida.Write($buffer, 0, $lidos)
+                $baixado += $lidos
+
+                if ($timerPainel.ElapsedMilliseconds -ge 500 -or ($total -gt 0 -and $baixado -ge $total)) {
+                    Mostrar-PainelTransferenciaNexus `
+                        -Operacao "Download" `
+                        -Nome $Nome `
+                        -Enviado $baixado `
+                        -Total $total
+                    $timerPainel.Restart()
+                }
+            }
+
+            $saida.Close()
+            $saida = $null
+            $entrada.Close()
+            $entrada = $null
+            $resp.Close()
+            $resp = $null
+
+            Mostrar-PainelTransferenciaNexus `
+                -Operacao "Download" `
+                -Nome $Nome `
+                -Enviado $baixado `
+                -Total $total `
+                -Finalizar
+
+            $timerDownload.Stop()
+            $mb = if ($baixado -gt 0) { $baixado / 1MB } else { 0 }
+            $velocidade = if ($timerDownload.Elapsed.TotalSeconds -gt 0) {
+                " ({0:N2} MB/s)" -f ($mb / $timerDownload.Elapsed.TotalSeconds)
+            }
+            else {
+                ""
+            }
+
+            Write-Host "  OK$velocidade" -ForegroundColor Green
             return $true
         }
         catch {
+            $script:NexusTransferenciaPainelAtivo = $false
             Write-Host "  ERRO" -ForegroundColor Red
 
             if ($tentativa -lt $MaxTentativas) {
@@ -467,6 +534,11 @@ function Download-NexusArquivo {
             else {
                 Mostrar-Detalhe $_.Exception.Message
             }
+        }
+        finally {
+            if ($saida) { $saida.Close() }
+            if ($entrada) { $entrada.Close() }
+            if ($resp) { $resp.Close() }
         }
     }
 
@@ -510,7 +582,7 @@ function Mostrar-ProgressoBytesNexus {
     Write-Host ("  Falta   : {0} bytes  ({1:N2}%)" -f (Formatar-BytesAlinhadoNexus -Bytes $falta -Total $Total), $percentual) -ForegroundColor Yellow
 }
 
-function Write-LinhaPainelUploadNexus {
+function Write-LinhaPainelTransferenciaNexus {
     param(
         [string]$Texto,
         [string]$Cor = "Gray"
@@ -527,11 +599,12 @@ function Write-LinhaPainelUploadNexus {
     Write-Host $Texto -ForegroundColor $Cor
 }
 
-function Mostrar-PainelUploadNexus {
+function Mostrar-PainelTransferenciaNexus {
     param(
+        [string]$Operacao,
         [string]$Nome,
-        [int]$ChunkAtual,
-        [int]$TotalChunks,
+        [int]$ChunkAtual = 0,
+        [int]$TotalChunks = 0,
         [int64]$Enviado,
         [int64]$Total,
         [switch]$Finalizar
@@ -554,28 +627,31 @@ function Mostrar-PainelUploadNexus {
     $parte = if ($TotalChunks -gt 0) { "{0} / {1}" -f $ChunkAtual, $TotalChunks } else { "-" }
 
     try {
-        if (-not $script:NexusUploadPainelAtivo) {
+        if (-not $script:NexusTransferenciaPainelAtivo) {
             Write-Host ""
-            $script:NexusUploadPainelTop = [Console]::CursorTop
-            $script:NexusUploadPainelAtivo = $true
+            $script:NexusTransferenciaPainelTop = [Console]::CursorTop
+            $script:NexusTransferenciaPainelAtivo = $true
         }
         else {
-            [Console]::SetCursorPosition(0, $script:NexusUploadPainelTop)
+            [Console]::SetCursorPosition(0, $script:NexusTransferenciaPainelTop)
         }
     }
     catch {
         Write-Host ""
     }
 
-    Write-LinhaPainelUploadNexus -Texto ("Arquivo : {0}" -f $Nome) -Cor "Cyan"
-    Write-LinhaPainelUploadNexus -Texto ("Parte   : {0}" -f $parte) -Cor "Gray"
-    Write-LinhaPainelUploadNexus -Texto ("Enviado : {0} bytes" -f (Formatar-BytesAlinhadoNexus -Bytes $Enviado -Total $Total)) -Cor "Cyan"
-    Write-LinhaPainelUploadNexus -Texto ("Total   : {0} bytes" -f (Formatar-BytesAlinhadoNexus -Bytes $Total -Total $Total)) -Cor "DarkCyan"
-    Write-LinhaPainelUploadNexus -Texto ("Falta   : {0} bytes" -f (Formatar-BytesAlinhadoNexus -Bytes $falta -Total $Total)) -Cor "Yellow"
-    Write-LinhaPainelUploadNexus -Texto ("Progresso: {0:N2}%" -f $percentual) -Cor "Yellow"
+    Write-LinhaPainelTransferenciaNexus -Texto ("Operacao: {0}" -f $Operacao) -Cor "Gray"
+    Write-LinhaPainelTransferenciaNexus -Texto ("Arquivo : {0}" -f $Nome) -Cor "Cyan"
+    if ($TotalChunks -gt 0) {
+        Write-LinhaPainelTransferenciaNexus -Texto ("Parte   : {0}" -f $parte) -Cor "Gray"
+    }
+    Write-LinhaPainelTransferenciaNexus -Texto ("Enviado : {0} bytes" -f (Formatar-BytesAlinhadoNexus -Bytes $Enviado -Total $Total)) -Cor "Cyan"
+    Write-LinhaPainelTransferenciaNexus -Texto ("Total   : {0} bytes" -f (Formatar-BytesAlinhadoNexus -Bytes $Total -Total $Total)) -Cor "DarkCyan"
+    Write-LinhaPainelTransferenciaNexus -Texto ("Falta   : {0} bytes" -f (Formatar-BytesAlinhadoNexus -Bytes $falta -Total $Total)) -Cor "Yellow"
+    Write-LinhaPainelTransferenciaNexus -Texto ("Progresso: {0:N2}%" -f $percentual) -Cor "Yellow"
 
     if ($Finalizar) {
-        $script:NexusUploadPainelAtivo = $false
+        $script:NexusTransferenciaPainelAtivo = $false
         Write-Host ""
     }
 }
@@ -723,8 +799,9 @@ function Upload-NexusArquivoChunked {
             throw "Arquivo grande demais para o tamanho de chunk atual."
         }
 
-        $script:NexusUploadPainelAtivo = $false
-        Mostrar-PainelUploadNexus `
+        $script:NexusTransferenciaPainelAtivo = $false
+        Mostrar-PainelTransferenciaNexus `
+            -Operacao "Upload" `
             -Nome $Nome `
             -ChunkAtual 0 `
             -TotalChunks $totalChunks `
@@ -750,7 +827,8 @@ function Upload-NexusArquivoChunked {
                         -TimeoutMs $TimeoutMs
 
                     $enviado = [Math]::Min([int64]($offset + $quantidade), $info.Length)
-                    Mostrar-PainelUploadNexus `
+                    Mostrar-PainelTransferenciaNexus `
+                        -Operacao "Upload" `
                         -Nome $Nome `
                         -ChunkAtual $chunk `
                         -TotalChunks $totalChunks `
@@ -775,7 +853,8 @@ function Upload-NexusArquivoChunked {
             -HeadersExtra $headersDestino `
             -TimeoutMs $TimeoutMs
 
-        Mostrar-PainelUploadNexus `
+        Mostrar-PainelTransferenciaNexus `
+            -Operacao "Upload" `
             -Nome $Nome `
             -ChunkAtual $totalChunks `
             -TotalChunks $totalChunks `
@@ -854,6 +933,7 @@ function Upload-NexusArquivo {
 
             $info = Get-Item -LiteralPath $Arquivo -ErrorAction Stop
             $timerUpload = [System.Diagnostics.Stopwatch]::StartNew()
+            $timerPainel = [System.Diagnostics.Stopwatch]::StartNew()
 
             [System.Net.ServicePointManager]::Expect100Continue = $false
 
@@ -873,9 +953,27 @@ function Upload-NexusArquivo {
             $buffer = New-Object byte[] $BufferSize
             $entrada = [System.IO.File]::OpenRead($info.FullName)
             $saida = $req.GetRequestStream()
+            $enviado = [int64]0
+
+            $script:NexusTransferenciaPainelAtivo = $false
+            Mostrar-PainelTransferenciaNexus `
+                -Operacao "Upload" `
+                -Nome $Nome `
+                -Enviado $enviado `
+                -Total $info.Length
 
             while (($lidos = $entrada.Read($buffer, 0, $buffer.Length)) -gt 0) {
                 $saida.Write($buffer, 0, $lidos)
+                $enviado += $lidos
+
+                if ($timerPainel.ElapsedMilliseconds -ge 500 -or $enviado -ge $info.Length) {
+                    Mostrar-PainelTransferenciaNexus `
+                        -Operacao "Upload" `
+                        -Nome $Nome `
+                        -Enviado $enviado `
+                        -Total $info.Length
+                    $timerPainel.Restart()
+                }
             }
 
             $saida.Close()
@@ -884,6 +982,13 @@ function Upload-NexusArquivo {
             $resp = $req.GetResponse()
             $resp.Close()
             $resp = $null
+
+            Mostrar-PainelTransferenciaNexus `
+                -Operacao "Upload" `
+                -Nome $Nome `
+                -Enviado $info.Length `
+                -Total $info.Length `
+                -Finalizar
 
             $timerUpload.Stop()
             $mb = if ($info.Length -gt 0) { $info.Length / 1MB } else { 0 }
@@ -898,6 +1003,7 @@ function Upload-NexusArquivo {
             return $true
         }
         catch {
+            $script:NexusTransferenciaPainelAtivo = $false
             Write-Host "  ERRO" -ForegroundColor Red
 
             if ($tentativa -lt $MaxTentativas) {
