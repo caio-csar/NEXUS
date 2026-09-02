@@ -53,6 +53,13 @@ function Baixar-ArquivoPublicoUtilitario {
     }
 }
 
+function Pausar-UtilitarioNexus {
+    param([string]$Nome = "processo")
+
+    Mostrar-TempoDesdeConfirmacaoNexus -Nome $Nome
+    Read-Host "`nENTER para voltar" | Out-Null
+}
+
 function Get-UrlSemCacheUtilitario {
     param([string]$Url)
 
@@ -320,10 +327,10 @@ while ($true) {
     $op = (Read-Host "Escolha").Trim()
 
     switch ($op) {
-        "1" { Corrigir-WmiNexus; Read-Host "`nENTER para voltar" | Out-Null }
+        "1" { Corrigir-WmiNexus; Pausar-UtilitarioNexus -Nome "correcao WMI" }
         "2" { Instalar-VerificarOdbcNexus }
-        "3" { Registrar-ServidorCloudNexus; Read-Host "`nENTER para voltar" | Out-Null }
-        "4" { Abrir-PastaSistemaNexus; Read-Host "`nENTER para voltar" | Out-Null }
+        "3" { Registrar-ServidorCloudNexus; Pausar-UtilitarioNexus -Nome "registro do servidor" }
+        "4" { Abrir-PastaSistemaNexus; Pausar-UtilitarioNexus -Nome "abrir pasta" }
         "0" { return }
         default { continue }
     }
