@@ -29,8 +29,18 @@ function Assert-NotContains {
 
 Assert-Contains `
     -Text $util `
-    -Expected 'Registrar Servidor no Cloud' `
-    -Message "Utilitarios deve ter a opcao Registrar Servidor no Cloud."
+    -Expected 'Registrar-ServidorCloudNexus' `
+    -Message "Logica de registro do servidor deve continuar disponivel no codigo."
+
+Assert-NotContains `
+    -Text $util `
+    -Unexpected '  [3] Registrar Servidor no Cloud' `
+    -Message "Registro do servidor deve ficar dormente fora do menu."
+
+Assert-NotContains `
+    -Text $util `
+    -Unexpected '"3" { Registrar-ServidorCloudNexus' `
+    -Message "Opcao 3 deve estar livre para o MaxHub."
 
 Assert-Contains `
     -Text $util `
