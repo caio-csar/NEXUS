@@ -117,6 +117,251 @@ function Instalar-VerificarOdbcNexus {
     }
 }
 
+function Test-ArquivoExecutavelNexus {
+    param([string]$Caminho)
+
+    if (-not (Test-Path -LiteralPath $Caminho)) {
+        return $false
+    }
+
+    try {
+        $stream = [System.IO.File]::OpenRead($Caminho)
+        try {
+            if ($stream.Length -lt 2) {
+                return $false
+            }
+
+            $primeiro = $stream.ReadByte()
+            $segundo = $stream.ReadByte()
+            return ($primeiro -eq 0x4D -and $segundo -eq 0x5A)
+        }
+        finally {
+            $stream.Close()
+        }
+    }
+    catch {
+        return $false
+    }
+}
+
+function Test-ArquivoRarNexus {
+    param([string]$Caminho)
+
+    if (-not (Test-Path -LiteralPath $Caminho)) {
+        return $false
+    }
+
+    try {
+        $stream = [System.IO.File]::OpenRead($Caminho)
+        try {
+            if ($stream.Length -lt 7) {
+                return $false
+            }
+
+            $assinatura = New-Object byte[] 7
+            $lidos = $stream.Read($assinatura, 0, $assinatura.Length)
+
+            return (
+                $lidos -eq 7 -and
+                $assinatura[0] -eq 0x52 -and
+                $assinatura[1] -eq 0x61 -and
+                $assinatura[2] -eq 0x72 -and
+                $assinatura[3] -eq 0x21 -and
+                $assinatura[4] -eq 0x1A -and
+                $assinatura[5] -eq 0x07
+            )
+        }
+        finally {
+            $stream.Close()
+        }
+    }
+    catch {
+        return $false
+    }
+}
+
+function Get-HtmlInputValueNexus {
+    param(
+        [string]$Html,
+        [string]$Name
+    )
+
+    $pattern = '<input\b(?=[^>]*\bname="' + [regex]::Escape($Name) + '")[^>]*\bvalue="([^"]*)"'
+    $match = [regex]::Match($Html, $pattern, [System.Text.RegularExpressions.RegexOptions]::IgnoreCase)
+
+    if ($match.Success) {
+        return [System.Net.WebUtility]::HtmlDecode($match.Groups[1].Value)
+    }
+
+    return $null
+}
+
+function Get-GoogleDriveDownloadUrlNexus {
+    param([string]$FileId)
+
+    $urlAviso = "https://drive.google.com/uc?export=download&id=$FileId"
+    $resposta = Invoke-WebRequest -Uri $urlAviso -UseBasicParsing -ErrorAction Stop
+
+    if ($resposta.Headers["Content-Disposition"]) {
+        return $urlAviso
+    }
+
+    $html = [string]$resposta.Content
+    $actionMatch = [regex]::Match($html, '<form\b(?=[^>]*\bid="download-form")[^>]*\baction="([^"]+)"', [System.Text.RegularExpressions.RegexOptions]::IgnoreCase)
+
+    $action = if ($actionMatch.Success) {
+        [System.Net.WebUtility]::HtmlDecode($actionMatch.Groups[1].Value)
+    }
+    else {
+        "https://drive.usercontent.google.com/download"
+    }
+
+    if ($action -match '^/') {
+        $action = "https://drive.usercontent.google.com$action"
+    }
+    elseif ($action -notmatch '^https?://') {
+        $action = "https://drive.usercontent.google.com/download"
+    }
+
+    $id = Get-HtmlInputValueNexus -Html $html -Name "id"
+    $export = Get-HtmlInputValueNexus -Html $html -Name "export"
+    $confirm = Get-HtmlInputValueNexus -Html $html -Name "confirm"
+    $uuid = Get-HtmlInputValueNexus -Html $html -Name "uuid"
+
+    if ([string]::IsNullOrWhiteSpace($id)) {
+        $id = $FileId
+    }
+
+    if ([string]::IsNullOrWhiteSpace($export)) {
+        $export = "download"
+    }
+
+    $partes = @(
+        "id=$([uri]::EscapeDataString($id))",
+        "export=$([uri]::EscapeDataString($export))"
+    )
+
+    if (-not [string]::IsNullOrWhiteSpace($confirm)) {
+        $partes += "confirm=$([uri]::EscapeDataString($confirm))"
+    }
+
+    if (-not [string]::IsNullOrWhiteSpace($uuid)) {
+        $partes += "uuid=$([uri]::EscapeDataString($uuid))"
+    }
+
+    return "${action}?$($partes -join '&')"
+}
+
+function Obter-7ZipNexus {
+    param([string]$TempPath)
+
+    $candidatos = @(
+        "C:\Program Files\7-Zip\7z.exe",
+        "C:\Program Files (x86)\7-Zip\7z.exe"
+    )
+
+    foreach ($candidato in $candidatos) {
+        if (Test-Path -LiteralPath $candidato) {
+            return $candidato
+        }
+    }
+
+    Write-Host "7-Zip nao encontrado. Instalando..." -ForegroundColor Cyan
+
+    $instalador = Join-Path $TempPath "7zip_installer.exe"
+    $ok = Download-NexusArquivo -Url "https://www.7-zip.org/a/7z2409-x64.exe" -Destino $instalador -Nome "7-Zip" -Headers $null
+
+    if (-not $ok) {
+        return $null
+    }
+
+    Start-Process -FilePath $instalador -ArgumentList "/S" -Wait
+
+    foreach ($candidato in $candidatos) {
+        if (Test-Path -LiteralPath $candidato) {
+            return $candidato
+        }
+    }
+
+    return $null
+}
+
+function Abrir-MaxHubNexus {
+    Mostrar-TituloNexus "ABRIR MAXHUB"
+
+    $fileId = "18xlV8SG8K1XeaW6yikuGTG38W3sViO9N"
+    $raizTemp = Join-Path $env:TEMP "NEXUS_MAXHUB"
+    $pastaTemp = Join-Path $raizTemp ([guid]::NewGuid().ToString())
+    $pastaExtracao = Join-Path $pastaTemp "app"
+    $rar = Join-Path $pastaTemp "MaxHub.rar"
+
+    try {
+        New-Item -ItemType Directory -Path $pastaTemp -Force | Out-Null
+        New-Item -ItemType Directory -Path $pastaExtracao -Force | Out-Null
+
+        Write-Host "Baixando MaxHub..." -ForegroundColor Cyan
+        $url = Get-GoogleDriveDownloadUrlNexus -FileId $fileId
+        $ok = Download-NexusArquivo -Url $url -Destino $rar -Nome "MaxHub.rar" -Headers $null
+
+        if (-not $ok) {
+            throw "Nao foi possivel baixar o MaxHub."
+        }
+
+        if (-not (Test-ArquivoRarNexus -Caminho $rar)) {
+            throw "O Google Drive nao entregou um pacote RAR valido. Verifique se o link esta publico."
+        }
+
+        $sevenZip = Obter-7ZipNexus -TempPath $pastaTemp
+        if (-not $sevenZip) {
+            throw "7-Zip indisponivel para extrair o MaxHub."
+        }
+
+        Write-Host ""
+        Write-Host "Extraindo MaxHub..." -ForegroundColor Cyan
+        & $sevenZip x $rar "-o$pastaExtracao" -y | Out-Null
+
+        $exe = Get-ChildItem -LiteralPath $pastaExtracao -Filter "*.exe" -Recurse |
+            Where-Object { $_.Name -like "MaxHub*.exe" } |
+            Select-Object -First 1
+
+        if (-not $exe) {
+            $exe = Get-ChildItem -LiteralPath $pastaExtracao -Filter "*.exe" -Recurse |
+                Select-Object -First 1
+        }
+
+        if (-not $exe) {
+            throw "Nenhum executavel foi encontrado dentro do pacote MaxHub."
+        }
+
+        if (-not (Test-ArquivoExecutavelNexus -Caminho $exe.FullName)) {
+            throw "O arquivo extraido nao parece ser um executavel valido."
+        }
+
+        Write-Host ""
+        Write-Host "Abrindo MaxHub..." -ForegroundColor Cyan
+        Write-Host "O NEXUS vai aguardar o MaxHub fechar para limpar o arquivo temporario." -ForegroundColor DarkGray
+
+        Start-Process -FilePath $exe.FullName -PassThru -Wait | Out-Null
+
+        Mostrar-Sucesso "MaxHub fechado."
+    }
+    catch {
+        Mostrar-Erro "Falha ao abrir MaxHub."
+        Mostrar-Detalhe $_.Exception.Message
+    }
+    finally {
+        try {
+            if (Test-Path -LiteralPath $pastaTemp) {
+                Remove-Item -LiteralPath $pastaTemp -Recurse -Force -ErrorAction Stop
+            }
+        }
+        catch {
+            Mostrar-Aviso "Nao foi possivel remover todos os arquivos temporarios do MaxHub."
+            Mostrar-Detalhe $_.Exception.Message
+        }
+    }
+}
+
 function Get-BancoMaxIniNexus {
     param([string]$MaxPath)
 
@@ -313,7 +558,7 @@ function Mostrar-MenuUtilitariosNexus {
     Write-Host "SUPORTE" -ForegroundColor Yellow
     Write-Host "  [1] Corrigir WMI" -ForegroundColor Gray
     Write-Host "  [2] Instalar/Verificar ODBC" -ForegroundColor Gray
-    Write-Host "  [3] Registrar Servidor no Cloud" -ForegroundColor Gray
+    Write-Host "  [3] Abrir MaxHub" -ForegroundColor Gray
     Write-Host "  [4] Abrir Pasta do Sistema" -ForegroundColor Gray
     Write-Host ""
 
@@ -331,7 +576,7 @@ while ($true) {
     switch ($op) {
         "1" { Corrigir-WmiNexus; Pausar-UtilitarioNexus -Nome "correcao WMI" }
         "2" { Instalar-VerificarOdbcNexus }
-        "3" { Registrar-ServidorCloudNexus; Pausar-UtilitarioNexus -Nome "registro do servidor" }
+        "3" { Abrir-MaxHubNexus; Pausar-UtilitarioNexus -Nome "MaxHub" }
         "4" { Abrir-PastaSistemaNexus; Pausar-UtilitarioNexus -Nome "abrir pasta" }
         "0" { return }
         default { continue }
