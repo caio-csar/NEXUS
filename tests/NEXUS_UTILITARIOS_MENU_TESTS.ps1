@@ -70,18 +70,83 @@ Assert-Contains `
 
 Assert-Contains `
     -Text $util `
+    -Expected 'Abrir MaxHub' `
+    -Message "Utilitarios deve ter a opcao Abrir MaxHub."
+
+Assert-Contains `
+    -Text $util `
+    -Expected '18xlV8SG8K1XeaW6yikuGTG38W3sViO9N' `
+    -Message "MaxHub deve usar o ID publico informado do Google Drive."
+
+Assert-Contains `
+    -Text $util `
     -Expected 'Abrir Pasta do Sistema' `
     -Message "Utilitarios deve ter a opcao Abrir Pasta do Sistema."
 
 Assert-Contains `
     -Text $util `
-    -Expected 'Registrar Servidor no Cloud' `
-    -Message "Utilitarios deve ter a opcao Registrar Servidor no Cloud."
+    -Expected 'NEXUS_MAXHUB' `
+    -Message "MaxHub deve ser baixado para uma pasta temporaria propria."
 
 Assert-Contains `
     -Text $util `
-    -Expected 'Abrir Pasta do Sistema' `
-    -Message "Utilitarios deve ter a opcao Abrir Pasta do Sistema."
+    -Expected 'Get-GoogleDriveDownloadUrlNexus' `
+    -Message "MaxHub deve tratar a tela de confirmacao do Google Drive."
+
+Assert-Contains `
+    -Text $util `
+    -Expected 'drive.usercontent.google.com/download' `
+    -Message "MaxHub deve baixar pelo endpoint confirmado do Google Drive."
+
+Assert-Contains `
+    -Text $util `
+    -Expected 'MaxHub.rar' `
+    -Message "MaxHub deve baixar o pacote RAR publico."
+
+Assert-Contains `
+    -Text $util `
+    -Expected 'Test-ArquivoRarNexus' `
+    -Message "NEXUS deve validar se o download retornou um RAR real."
+
+Assert-Contains `
+    -Text $util `
+    -Expected '& $sevenZip x' `
+    -Message "NEXUS deve extrair o pacote MaxHub antes de abrir."
+
+Assert-Contains `
+    -Text $util `
+    -Expected 'Get-ChildItem -LiteralPath $pastaExtracao -Filter "*.exe"' `
+    -Message "NEXUS deve localizar o executavel extraido do MaxHub."
+
+Assert-Contains `
+    -Text $util `
+    -Expected 'Start-Process -FilePath $exe.FullName -PassThru -Wait' `
+    -Message "NEXUS deve abrir o MaxHub uma unica vez e aguardar fechamento."
+
+Assert-Contains `
+    -Text $util `
+    -Expected 'Remove-Item -LiteralPath $pastaTemp -Recurse -Force' `
+    -Message "NEXUS deve remover o executavel temporario ao fechar o MaxHub."
+
+Assert-Contains `
+    -Text $util `
+    -Expected 'Test-ArquivoExecutavelNexus' `
+    -Message "NEXUS deve validar se o download retornou um executavel real."
+
+Assert-Contains `
+    -Text $util `
+    -Expected '  [3] Abrir MaxHub' `
+    -Message "MaxHub deve ficar na opcao 3."
+
+Assert-Contains `
+    -Text $util `
+    -Expected '  [4] Abrir Pasta do Sistema' `
+    -Message "Abrir Pasta do Sistema deve ficar na opcao 4."
+
+Assert-NotContains `
+    -Text $util `
+    -Unexpected '  [3] Registrar Servidor no Cloud' `
+    -Message "Registro de servidor deve ficar dormente fora do menu."
 
 Assert-NotContains `
     -Text $util `
