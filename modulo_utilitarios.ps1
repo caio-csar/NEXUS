@@ -548,6 +548,36 @@ function Abrir-PastaSistemaNexus {
     Abrir-PastaNexus $pasta
 }
 
+function Criar-BancoAuxiliarNexus {
+    Mostrar-TituloNexus "CRIAR BANCO AUXILIAR"
+
+    if (-not (Confirmar-Acao "Executar criacao/verificacao do banco auxiliar")) {
+        Mostrar-Aviso "Operacao cancelada."
+        return
+    }
+
+    $arquivo = Join-Path $env:TEMP ("NEXUS_CriaDBAux_{0}.ps1" -f [guid]::NewGuid().ToString("N"))
+
+    if (-not (Baixar-ArquivoPublicoUtilitario -Caminho "Scripts_Uteis/CriaDBAux.ps1" -Destino $arquivo -Nome "Criar Banco Auxiliar")) {
+        return
+    }
+
+    try {
+        & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $arquivo
+
+        if ($LASTEXITCODE -ne 0) {
+            Mostrar-Erro "Falha ao executar o script de banco auxiliar (codigo $LASTEXITCODE)."
+        }
+    }
+    catch {
+        Mostrar-Erro "Falha ao executar o script de banco auxiliar."
+        Mostrar-Detalhe $_.Exception.Message
+    }
+    finally {
+        Remove-Item -LiteralPath $arquivo -Force -ErrorAction SilentlyContinue
+    }
+}
+
 function Mostrar-MenuUtilitariosNexus {
     Write-Host "NEXUS  |  UTILITARIOS" -ForegroundColor Cyan
     Write-Host "Automacao tecnica" -ForegroundColor DarkGray
@@ -560,6 +590,7 @@ function Mostrar-MenuUtilitariosNexus {
     Write-Host "  [2] Instalar/Verificar ODBC" -ForegroundColor Gray
     Write-Host "  [3] Abrir MaxHub" -ForegroundColor Gray
     Write-Host "  [4] Abrir Pasta do Sistema" -ForegroundColor Gray
+    Write-Host "  [5] Criar Banco Auxiliar" -ForegroundColor Gray
     Write-Host ""
 
     Write-Host "----------------------------------------" -ForegroundColor DarkGray
@@ -578,6 +609,7 @@ while ($true) {
         "2" { Instalar-VerificarOdbcNexus }
         "3" { Abrir-MaxHubNexus; Pausar-UtilitarioNexus -Nome "MaxHub" }
         "4" { Abrir-PastaSistemaNexus; Pausar-UtilitarioNexus -Nome "abrir pasta" }
+        "5" { Criar-BancoAuxiliarNexus; Pausar-UtilitarioNexus -Nome "banco auxiliar" }
         "0" { return }
         default { continue }
     }
