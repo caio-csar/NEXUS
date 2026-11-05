@@ -25,6 +25,10 @@ test("grava apenas os campos permitidos no GitHub privado", async () => {
   const anterior = globalThis.fetch;
   let recebeu = false;
   globalThis.fetch = async (githubUrl, init) => {
+    if (init.method === "GET") {
+      assert.equal(githubUrl, "https://api.github.com/repos/caio-csar/NEXUS-Logs");
+      return new Response(JSON.stringify({ private: true }), { status: 200 });
+    }
     recebeu = true;
     assert.match(githubUrl, /^https:\/\/api\.github\.com\/repos\/caio-csar\/NEXUS-Logs\/contents\/acessos\//);
     assert.equal(init.method, "PUT");
@@ -66,6 +70,25 @@ test("rejeita conteudo grande", async () => {
 test("falha fechada sem credencial configurada no servidor", async () => {
   const resposta = await worker.fetch(requisicao(evento), {});
   assert.equal(resposta.status, 503);
+});
+
+test("nao grava se o repositorio esta publico", async () => {
+  const anterior = globalThis.fetch;
+  let escrita = false;
+  globalThis.fetch = async (_url, init) => {
+    if (init.method === "GET") {
+      return new Response(JSON.stringify({ private: false }), { status: 200 });
+    }
+    escrita = true;
+    return new Response("{}", { status: 201 });
+  };
+  try {
+    const resposta = await worker.fetch(requisicao(evento), env);
+    assert.equal(resposta.status, 503);
+    assert.equal(escrita, false);
+  } finally {
+    globalThis.fetch = anterior;
+  }
 });
 
 test("erro do GitHub nao confirma gravação", async () => {
