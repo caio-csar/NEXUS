@@ -32,6 +32,9 @@ export default {
     const tipo = (request.headers.get("content-type") || "").split(";")[0].trim().toLowerCase();
     if (tipo !== "application/json") return resposta(415);
 
+    const tamanhoInformado = Number(request.headers.get("content-length") || "0");
+    if (tamanhoInformado > LIMITE_BYTES) return resposta(413);
+
     let conteudo;
     try {
       const texto = await request.text();
@@ -73,6 +76,27 @@ export default {
     const bytes = new TextEncoder().encode(JSON.stringify(registro, null, 2) + "\n");
     const base64 = btoa(Array.from(bytes, (byte) => String.fromCharCode(byte)).join(""));
 
+    // Evita gravar informacoes de computadores em um repo configurado como publico.
+    // Tokens fine-grained incluem acesso de leitura a metadados do proprio repositorio.
+    const cabecalhosGithub = {
+      Accept: "application/vnd.github+json",
+      Authorization: `Bearer ${env.GITHUB_TOKEN}`,
+      "User-Agent": "NEXUS-Access-Logger",
+      "X-GitHub-Api-Version": "2022-11-28",
+    };
+
+    try {
+      const repoInfoResponse = await fetch(
+        `https://api.github.com/repos/${env.GITHUB_REPO}`,
+        { method: "GET", headers: cabecalhosGithub }
+      );
+      if (repoInfoResponse.status !== 200) return resposta(502);
+      const repoInfo = await repoInfoResponse.json();
+      if (repoInfo.private !== true) return resposta(503);
+    } catch {
+      return resposta(502);
+    }
+
     let respostaGithub;
     try {
       respostaGithub = await fetch(
@@ -80,11 +104,8 @@ export default {
         {
           method: "PUT",
           headers: {
-            Accept: "application/vnd.github+json",
-            Authorization: `Bearer ${env.GITHUB_TOKEN}`,
+            ...cabecalhosGithub,
             "Content-Type": "application/json",
-            "User-Agent": "NEXUS-Access-Logger",
-            "X-GitHub-Api-Version": "2022-11-28",
           },
           body: JSON.stringify({
             message: "log: abertura NEXUS",
