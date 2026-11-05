@@ -1,0 +1,36 @@
+name: Testes de monitoramento NEXUS
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+      - feat/monitoramento-acessos
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Testar Worker (sem acesso real ao GitHub)
+        run: node --test tests/NEXUS_ACCESS_WORKER_TESTS.mjs
+
+      - name: Validar sintaxe do CORE e protecoes do monitoramento
+        shell: pwsh
+        run: |
+          ./tests/NEXUS_CORE_MENU_TESTS.ps1
+          ./tests/NEXUS_MONITORAMENTO_TESTS.ps1

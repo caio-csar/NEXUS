@@ -1,0 +1,4 @@
+{
+  "enabled": false,
+  "endpoint": "https://nexus-logs.caiocesar1214.workers.dev/nexus/access"
+}
