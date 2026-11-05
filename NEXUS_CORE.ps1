@@ -100,6 +100,54 @@ catch {
 }
 
 # --------------------------------------------
+# MONITORAMENTO OPCIONAL DE ABERTURAS
+# --------------------------------------------
+# Fail-open: a falha do registro nunca bloqueia o NEXUS.
+# Nenhuma senha, token ou conteudo de clientes e enviado.
+function Registrar-AcessoNexus {
+    try {
+        $configUrl = "$script:NexusRawBase/monitoramento/config.json"
+        $config = Invoke-RestMethod -Uri $configUrl -TimeoutSec 2 -ErrorAction Stop
+
+        if ($config.enabled -ne $true) {
+            return
+        }
+
+        $endpoint = [string]$config.endpoint
+        $endereco = $null
+        if (-not [Uri]::TryCreate($endpoint, [UriKind]::Absolute, [ref]$endereco)) {
+            return
+        }
+        if ($endereco.Scheme -ne [Uri]::UriSchemeHttps -or $endereco.UserInfo) {
+            return
+        }
+
+        $dados = @{
+            data_hora_cliente  = [DateTimeOffset]::Now.ToString("o")
+            usuario_nexus     = [string]$script:Usuario
+            computador        = [Environment]::MachineName
+            usuario_windows   = [Environment]::UserName
+            sistema_operacional = [Environment]::OSVersion.VersionString
+        }
+
+        $json = $dados | ConvertTo-Json -Compress -Depth 2
+        $corpo = [Text.Encoding]::UTF8.GetBytes($json)
+
+        Invoke-RestMethod -Uri $endereco.AbsoluteUri `
+            -Method Post `
+            -ContentType "application/json; charset=utf-8" `
+            -Body $corpo `
+            -TimeoutSec 2 `
+            -ErrorAction Stop | Out-Null
+    }
+    catch {
+        # O monitoramento e complementar e nao interfere nos modulos.
+    }
+}
+
+Registrar-AcessoNexus
+
+# --------------------------------------------
 # SHARED CACHE
 # --------------------------------------------
 
