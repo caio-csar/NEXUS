@@ -10,7 +10,7 @@ permissions:
 
 jobs:
   teste:
-    if: ${{ github.event.head_commit.message == 'test: executar smoke test do Worker NEXUS' }}
+    if: "${{ github.event.head_commit.message == 'test: executar smoke test do Worker NEXUS' }}"
     runs-on: ubuntu-latest
     steps:
       - name: Enviar evento ficticio ao Worker
