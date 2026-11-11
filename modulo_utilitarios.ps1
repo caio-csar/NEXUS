@@ -578,6 +578,48 @@ function Criar-BancoAuxiliarNexus {
     }
 }
 
+function Atualizar-CadeiaIcpBrasilNexus {
+    Mostrar-TituloNexus "ATUALIZAR CADEIA ICP-BRASIL"
+
+    Write-Host "Baixa certificados oficiais do ITI, valida SHA-512 e atualiza as lojas" -ForegroundColor Gray
+    Write-Host "de autoridades certificadoras do computador (LocalMachine\Root e CA)." -ForegroundColor Gray
+    Write-Host "Certificados existentes nao serao removidos; A1/A3 nao sao alterados." -ForegroundColor Gray
+    Write-Host "Requer permissao de Administrador e conexao com a internet." -ForegroundColor Yellow
+    Write-Host ""
+
+    if (-not (Confirmar-Acao "Atualizar as cadeias ICP-Brasil deste computador")) {
+        Mostrar-Aviso "Operacao cancelada."
+        return
+    }
+
+    $arquivo = Join-Path $env:TEMP ("NEXUS_ICP_Brasil_{0}.ps1" -f [guid]::NewGuid().ToString("N"))
+
+    if (-not (Baixar-ArquivoPublicoUtilitario -Caminho "Scripts_Uteis/Instalar-ICP-Brasil.ps1" -Destino $arquivo -Nome "Atualizador ICP-Brasil")) {
+        return
+    }
+
+    try {
+        # Executar em processo isolado preserva a saida, o resumo e a pausa do atualizador.
+        & powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File $arquivo
+        $codigo = $LASTEXITCODE
+
+        if ($codigo -eq 0) {
+            Mostrar-Sucesso "Atualizacao ICP-Brasil concluida. Confira o relatorio."
+        }
+        else {
+            Mostrar-Erro "Atualizador ICP-Brasil retornou codigo $codigo."
+            Mostrar-Detalhe "Confira o log e resultado.csv em C:\ProgramData\ICP-Brasil-Atualizador."
+        }
+    }
+    catch {
+        Mostrar-Erro "Falha ao executar atualizador ICP-Brasil."
+        Mostrar-Detalhe $_.Exception.Message
+    }
+    finally {
+        Remove-Item -LiteralPath $arquivo -Force -ErrorAction SilentlyContinue
+    }
+}
+
 function Mostrar-MenuUtilitariosNexus {
     Write-Host "NEXUS  |  UTILITARIOS" -ForegroundColor Cyan
     Write-Host "Automacao tecnica" -ForegroundColor DarkGray
@@ -591,6 +633,7 @@ function Mostrar-MenuUtilitariosNexus {
     Write-Host "  [3] Abrir MaxHub" -ForegroundColor Gray
     Write-Host "  [4] Abrir Pasta do Sistema" -ForegroundColor Gray
     Write-Host "  [5] Criar Banco Auxiliar" -ForegroundColor Gray
+    Write-Host "  [6] Atualizar Cadeia ICP-Brasil" -ForegroundColor Gray
     Write-Host ""
 
     Write-Host "----------------------------------------" -ForegroundColor DarkGray
@@ -610,6 +653,7 @@ while ($true) {
         "3" { Abrir-MaxHubNexus; Pausar-UtilitarioNexus -Nome "MaxHub" }
         "4" { Abrir-PastaSistemaNexus; Pausar-UtilitarioNexus -Nome "abrir pasta" }
         "5" { Criar-BancoAuxiliarNexus; Pausar-UtilitarioNexus -Nome "banco auxiliar" }
+        "6" { Atualizar-CadeiaIcpBrasilNexus }
         "0" { return }
         default { continue }
     }
