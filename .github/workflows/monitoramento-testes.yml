@@ -7,6 +7,7 @@ on:
       - main
       - feat/monitoramento-acessos
       - feat/utilitario-icp-brasil
+      - feat/utilitario-login-maxdata
 
 permissions:
   contents: read
@@ -37,3 +38,4 @@ jobs:
           ./tests/NEXUS_MONITORAMENTO_TESTS.ps1
           ./tests/NEXUS_UTILITARIOS_MENU_TESTS.ps1
           ./tests/NEXUS_ICP_BRASIL_TESTS.ps1
+          ./tests/NEXUS_LOGIN_MAXDATA_TESTS.ps1
