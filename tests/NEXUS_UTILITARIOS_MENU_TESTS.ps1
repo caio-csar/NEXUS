@@ -168,6 +168,31 @@ Assert-NotContains `
     -Unexpected 'Explorar Arquivos Uteis' `
     -Message "Explorar Arquivos Uteis deve sair de Utilitarios."
 
+Assert-Contains \`
+    -Text $util \`
+    -Expected '  [6] Atualizar Cadeia ICP-Brasil' \`
+    -Message "Utilitarios deve exibir a atualizacao ICP-Brasil na opcao 6."
+
+Assert-Contains \`
+    -Text $util \`
+    -Expected '"6" { Atualizar-CadeiaIcpBrasilNexus }' \`
+    -Message "A opcao 6 deve executar o atualizador ICP-Brasil sem pausa duplicada."
+
+Assert-Contains \`
+    -Text $util \`
+    -Expected 'Scripts_Uteis/Instalar-ICP-Brasil.ps1' \`
+    -Message "O atualizador ICP-Brasil deve ser baixado da pasta Scripts_Uteis."
+
+Assert-Contains \`
+    -Text $util \`
+    -Expected 'Confirmar-Acao "Atualizar as cadeias ICP-Brasil deste computador"' \`
+    -Message "A importacao de certificados deve exigir confirmacao explicita."
+
+Assert-Contains \`
+    -Text $util \`
+    -Expected 'Remove-Item -LiteralPath $arquivo -Force -ErrorAction SilentlyContinue' \`
+    -Message "O script temporario do atualizador deve ser removido."
+
 Assert-Contains `
     -Text $util `
     -Expected '"0" { return }' `
