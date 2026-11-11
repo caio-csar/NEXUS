@@ -19,8 +19,11 @@ if ($erros.Count -gt 0) {
 $core = Get-Content -LiteralPath $corePath -Raw
 $config = Get-Content -LiteralPath $configPath -Raw | ConvertFrom-Json
 
-if ($config.enabled -ne $false) {
-    throw "Monitoramento deve ser distribuido desativado."
+if ($null -eq $config.enabled -or $config.enabled -isnot [bool]) {
+    throw "Monitoramento deve informar enabled booleano."
+}
+if (-not ([string]$config.endpoint).StartsWith("https://")) {
+    throw "Monitoramento deve usar endpoint HTTPS."
 }
 
 $esperado = @(

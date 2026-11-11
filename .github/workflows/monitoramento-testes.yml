@@ -1,4 +1,4 @@
-name: Testes de monitoramento NEXUS
+name: Testes NEXUS (monitoramento e utilitarios)
 
 on:
   pull_request:
@@ -6,6 +6,7 @@ on:
     branches:
       - main
       - feat/monitoramento-acessos
+      - feat/utilitario-icp-brasil
 
 permissions:
   contents: read
@@ -34,3 +35,5 @@ jobs:
         run: |
           ./tests/NEXUS_CORE_MENU_TESTS.ps1
           ./tests/NEXUS_MONITORAMENTO_TESTS.ps1
+          ./tests/NEXUS_UTILITARIOS_MENU_TESTS.ps1
+          ./tests/NEXUS_ICP_BRASIL_TESTS.ps1

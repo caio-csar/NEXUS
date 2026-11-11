@@ -33,6 +33,8 @@ Menu de Utilitarios:
 [2] Instalar/Verificar ODBC
 [3] Abrir MaxHub
 [4] Abrir Pasta do Sistema
+[5] Criar Banco Auxiliar
+[6] Atualizar Cadeia ICP-Brasil
 [0] Voltar
 ```
 
@@ -132,6 +134,8 @@ Utilitarios atuais:
 - Instalar/Verificar ODBC;
 - Abrir MaxHub;
 - Abrir Pasta do Sistema.
+- Criar Banco Auxiliar;
+- Atualizar Cadeia ICP-Brasil (download oficial ITI, SHA-512, instalacao de ACs validas e relatorio local).
 
 O MaxHub e baixado do Google Drive como `MaxHub.rar`, extraido em pasta temporaria, executado uma vez e removido quando o processo fecha.
 
@@ -140,6 +144,14 @@ O MaxHub e baixado do Google Drive como `MaxHub.rar`, extraido em pasta temporar
 Modulo antigo de backup. Hoje nao esta no menu principal, mas contem uma logica util para listar bancos locais via `sqlcmd`.
 
 Essa logica ainda deve ser centralizada no `NEXUS_SHARED.ps1` futuramente.
+
+### Atualizar Cadeia ICP-Brasil
+
+A opcao `[6]` de Utilitarios executa `Scripts_Uteis/Instalar-ICP-Brasil.ps1`, equivalente ao atualizador entregue no ZIP. Ela solicita confirmacao, baixa a cadeia vigente e o hash SHA-512 do ITI, verifica integridade, importa ACs validas e gera log e CSV.
+
+**Relatorios:** `C:\ProgramData\ICP-Brasil-Atualizador\Execucao-AAAA...`
+
+**Atencao:** a instalacao modifica lojas de confianca da maquina (`LocalMachine\Root` e `LocalMachine\CA`). Utilize apenas em ambientes autorizados. O script nao remove certificados, nao altera certificados pessoais A1/A3 e nao garante que a consulta a SEFAZ ou certificados revogados sejam corrigidos.
 
 ## Cloud e WebDAV
 
