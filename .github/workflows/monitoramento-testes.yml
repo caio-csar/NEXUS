@@ -8,6 +8,7 @@ on:
       - feat/monitoramento-acessos
       - feat/utilitario-icp-brasil
       - feat/utilitario-login-maxdata
+      - fix/criar-usuarios-sql-simples
 
 permissions:
   contents: read
