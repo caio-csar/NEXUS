@@ -35,6 +35,7 @@ Menu de Utilitarios:
 [4] Abrir Pasta do Sistema
 [5] Criar Banco Auxiliar
 [6] Atualizar Cadeia ICP-Brasil
+[7] Configurar Login SQL Maxdata
 [0] Voltar
 ```
 
@@ -136,6 +137,7 @@ Utilitarios atuais:
 - Abrir Pasta do Sistema.
 - Criar Banco Auxiliar;
 - Atualizar Cadeia ICP-Brasil (download oficial ITI, SHA-512, instalacao de ACs validas e relatorio local).
+- Configurar Login SQL Maxdata (login, roles e usuario no banco, com verificacao de existencia).
 
 O MaxHub e baixado do Google Drive como `MaxHub.rar`, extraido em pasta temporaria, executado uma vez e removido quando o processo fecha.
 
@@ -152,6 +154,26 @@ A opcao `[6]` de Utilitarios executa `Scripts_Uteis/Instalar-ICP-Brasil.ps1`, eq
 **Relatorios:** `C:\ProgramData\ICP-Brasil-Atualizador\Execucao-AAAA...`
 
 **Atencao:** a instalacao modifica lojas de confianca da maquina (`LocalMachine\Root` e `LocalMachine\CA`). Utilize apenas em ambientes autorizados. O script nao remove certificados, nao altera certificados pessoais A1/A3 e nao garante que a consulta a SEFAZ ou certificados revogados sejam corrigidos.
+
+### Configurar Login SQL Maxdata
+
+A opcao `[7]` de Utilitarios executa `Scripts_Uteis/Configurar-LoginMaxdata.ps1`.
+Ela detecta a instancia SQL (ou solicita uma), tenta sugerir o banco a partir do
+`C:\MAX\max.ini` e pede confirmacao antes de modificar a instancia escolhida.
+
+- Requer autenticação Windows com permissao `sysadmin` no SQL Server.
+- Se o login `maxdata` nao existir, solicita uma senha forte interativamente,
+  cria o login com `CHECK_POLICY=ON` e `CHECK_EXPIRATION=OFF`.
+- Garante as oito roles informadas pelo analista, incluindo `sysadmin` (controle
+  total da instancia). Roles ja existentes nao sao adicionadas novamente.
+- Verifica o usuario `maxdata` no banco de destino e cria somente se nao existir,
+  com `DEFAULT_SCHEMA = dbo`. Mapeamentos divergentes geram erro sem sobrescrita.
+- Nao redefine senhas, apaga usuarios ou grava a senha em arquivos ou logs.
+- Exibe mensagem de sucesso, de itens criados ou de que ja existiam.
+
+**Seguranca:** nunca publicar uma senha fixa de login `sysadmin` no repositorio.
+Esta rotina exige acesso autorizado e deve ser executada apenas por administradores
+dos respectivos bancos de dados. Nao altera instancias/bancos nao selecionados.
 
 ## Cloud e WebDAV
 
