@@ -620,6 +620,36 @@ function Atualizar-CadeiaIcpBrasilNexus {
     }
 }
 
+function Configurar-LoginMaxdataNexus {
+    Mostrar-TituloNexus "CONFIGURAR LOGIN SQL MAXDATA"
+
+    Write-Host "Verifica o login maxdata, as roles solicitadas e o usuario no banco." -ForegroundColor Gray
+    Write-Host "Usa autenticacao Windows com permissao sysadmin e solicita o banco alvo." -ForegroundColor Gray
+    Write-Host "Se precisar criar o login, a senha sera solicitada de forma segura." -ForegroundColor Gray
+    Write-Host "A senha nao fica gravada no codigo nem nos logs do NEXUS." -ForegroundColor Gray
+    Write-Host ""
+
+    $arquivo = Join-Path $env:TEMP ("NEXUS_LoginMaxdata_{0}.ps1" -f [guid]::NewGuid().ToString("N"))
+    if (-not (Baixar-ArquivoPublicoUtilitario -Caminho "Scripts_Uteis/Configurar-LoginMaxdata.ps1" -Destino $arquivo -Nome "Configurar Login SQL Maxdata")) {
+        return
+    }
+
+    try {
+        & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $arquivo
+        $codigo = $LASTEXITCODE
+        if ($codigo -ne 0) {
+            Mostrar-Erro "Configurar Login SQL Maxdata falhou (codigo $codigo)."
+        }
+    }
+    catch {
+        Mostrar-Erro "Falha ao executar utilitario de login SQL."
+        Mostrar-Detalhe $_.Exception.Message
+    }
+    finally {
+        Remove-Item -LiteralPath $arquivo -Force -ErrorAction SilentlyContinue
+    }
+}
+
 function Mostrar-MenuUtilitariosNexus {
     Write-Host "NEXUS  |  UTILITARIOS" -ForegroundColor Cyan
     Write-Host "Automacao tecnica" -ForegroundColor DarkGray
@@ -634,6 +664,7 @@ function Mostrar-MenuUtilitariosNexus {
     Write-Host "  [4] Abrir Pasta do Sistema" -ForegroundColor Gray
     Write-Host "  [5] Criar Banco Auxiliar" -ForegroundColor Gray
     Write-Host "  [6] Atualizar Cadeia ICP-Brasil" -ForegroundColor Gray
+    Write-Host "  [7] Configurar Login SQL Maxdata" -ForegroundColor Gray
     Write-Host ""
 
     Write-Host "----------------------------------------" -ForegroundColor DarkGray
@@ -654,6 +685,7 @@ while ($true) {
         "4" { Abrir-PastaSistemaNexus; Pausar-UtilitarioNexus -Nome "abrir pasta" }
         "5" { Criar-BancoAuxiliarNexus; Pausar-UtilitarioNexus -Nome "banco auxiliar" }
         "6" { Atualizar-CadeiaIcpBrasilNexus }
+        "7" { Configurar-LoginMaxdataNexus; Pausar-UtilitarioNexus -Nome "login SQL maxdata" }
         "0" { return }
         default { continue }
     }
