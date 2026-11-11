@@ -34,7 +34,7 @@ foreach ($necessario in @(
     "sp_addsrvrolemember",
     'JA EXISTIA',
     'CONFIGURACAO CONCLUIDA COM SUCESSO',
-    "if ($resposta -ne 'S')",
+    'if ($resposta -ne ''S'')',
     'exit 1'
 )) {
     if (-not $codigo.Contains($necessario)) {
