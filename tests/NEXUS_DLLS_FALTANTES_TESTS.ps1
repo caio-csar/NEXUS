@@ -45,6 +45,45 @@ $funcoes = @($ast.FindAll({
 if ($funcoes.Count -ne 1) { throw 'Funcao de copia nao encontrada.' }
 . ([scriptblock]::Create($funcoes[0].Extent.Text))
 
+# A selecao da pasta deve ocorrer em toda execucao, mesmo quando C:\MAX existe.
+$utilAst = [System.Management.Automation.Language.Parser]::ParseFile(
+    $utilFile, [ref]$utilTokens, [ref]$utilErrors
+)
+$opcao = @($utilAst.FindAll({
+    param($node)
+    $node -is [System.Management.Automation.Language.FunctionDefinitionAst] -and
+        $node.Name -eq 'Inserir-DllsFaltantesNexus'
+}, $true))
+if ($opcao.Count -ne 1) { throw 'Funcao de utilitario de DLLs nao encontrada.' }
+$codigoOpcao = $opcao[0].Extent.Text
+
+if ($codigoOpcao.Contains('$pastaSistema = "C:\MAX"')) {
+    throw 'O utilitario nao pode assumir C:\MAX automaticamente.'
+}
+if (-not $codigoOpcao.Contains(
+    '$pastaSistema = Selecionar-PastaNexus -Titulo "Selecione a pasta do sistema que recebera as DLLs"'
+)) {
+    throw 'O utilitario precisa sempre perguntar qual pasta sera usada.'
+}
+
+. ([scriptblock]::Create($codigoOpcao))
+$script:ChamadasSelecionarPastaDll = 0
+$script:AvisoPastaDll = ''
+function Selecionar-PastaNexus {
+    param([string]$Titulo)
+    $script:ChamadasSelecionarPastaDll++
+    return $null
+}
+function Mostrar-Aviso {
+    param([string]$Mensagem)
+    $script:AvisoPastaDll = $Mensagem
+}
+Inserir-DllsFaltantesNexus
+if ($script:ChamadasSelecionarPastaDll -ne 1 -or
+    $script:AvisoPastaDll -notlike '*Nenhuma DLL foi inserida*') {
+    throw 'Cancelar a escolha da pasta deve interromper sem baixar/copiar DLLs.'
+}
+
 $testRoot = Join-Path ([System.IO.Path]::GetTempPath()) ("NEXUS_TEST_DLLS_" + [guid]::NewGuid().ToString("N"))
 $origem = Join-Path $testRoot "extraido"
 $destino = Join-Path $testRoot "sistema"

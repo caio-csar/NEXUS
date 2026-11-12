@@ -184,7 +184,7 @@ indiscriminadamente.
 A opcao `[8] Inserir DLLs faltantes` utiliza o mesmo arquivo
 `DLLS.rar` baixado pelo `modulo_instalador.ps1`.
 
-- Usa `C:\MAX` como pasta padrao quando existente; caso contrario, permite selecionar a pasta.
+- Sempre solicita a selecao da pasta do sistema, mesmo que `C:\MAX` exista. Cancelar nao insere nenhuma DLL.
 - Baixa o pacote para uma pasta temporaria, valida sua assinatura RAR e o extrai com 7-Zip
   sem tocar diretamente nos arquivos do sistema.
 - Analisa apenas arquivos `.dll` do pacote, preservando os caminhos relativos.
