@@ -36,6 +36,7 @@ Menu de Utilitarios:
 [5] Criar Banco Auxiliar
 [6] Atualizar Cadeia ICP-Brasil
 [7] Criar usuarios no banco
+[8] Inserir DLLs faltantes
 [0] Voltar
 ```
 
@@ -177,6 +178,24 @@ A opcao `[7] Criar usuarios no banco` baixa e executa
 instancia. Use somente com autorizacao. Nao modifica todos os bancos
 indiscriminadamente.
 
+
+### Inserir DLLs faltantes
+
+A opcao `[8] Inserir DLLs faltantes` utiliza o mesmo arquivo
+`DLLS.rar` baixado pelo `modulo_instalador.ps1`.
+
+- Usa `C:\MAX` como pasta padrao quando existente; caso contrario, permite selecionar a pasta.
+- Baixa o pacote para uma pasta temporaria, valida sua assinatura RAR e o extrai com 7-Zip
+  sem tocar diretamente nos arquivos do sistema.
+- Analisa apenas arquivos `.dll` do pacote, preservando os caminhos relativos.
+- Copia somente as DLLs ausentes, sem sobrescrever nenhuma DLL ja instalada
+  (copia sem overwrite, inclusive para evitar condicoes de corrida).
+- Exibe somente o resumo: `X DLLs faltantes foram inseridas.` ou
+  `A pasta do sistema ja possui todas as DLLs.`; erros geram mensagem de falha.
+- Remove os arquivos temporarios apos a operacao.
+
+A ferramenta nao substitui DLLs existentes, nao registra bibliotecas e nao altera os
+outros arquivos contidos no pacote.
 
 ## Cloud e WebDAV
 
