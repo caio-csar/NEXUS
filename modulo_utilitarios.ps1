@@ -645,11 +645,8 @@ function Configurar-LoginMaxdataNexus {
 }
 
 function Inserir-DllsFaltantesNexus {
-    # A pasta padrao e C:\MAX. Para outros locais, solicita a pasta existente.
-    $pastaSistema = "C:\MAX"
-    if (-not (Test-Path -LiteralPath $pastaSistema -PathType Container)) {
-        $pastaSistema = Selecionar-PastaNexus -Titulo "Selecione a pasta do sistema que recebera as DLLs"
-    }
+    # Sempre perguntar ao operador. Nunca assumir C:\MAX automaticamente.
+    $pastaSistema = Selecionar-PastaNexus -Titulo "Selecione a pasta do sistema que recebera as DLLs"
 
     if ([string]::IsNullOrWhiteSpace($pastaSistema) -or
         -not (Test-Path -LiteralPath $pastaSistema -PathType Container)) {
