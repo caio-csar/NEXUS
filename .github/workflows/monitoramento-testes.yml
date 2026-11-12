@@ -9,6 +9,7 @@ on:
       - feat/utilitario-icp-brasil
       - feat/utilitario-login-maxdata
       - fix/criar-usuarios-sql-simples
+      - feat/utilitarios-dlls-faltantes
 
 permissions:
   contents: read
@@ -40,3 +41,4 @@ jobs:
           ./tests/NEXUS_UTILITARIOS_MENU_TESTS.ps1
           ./tests/NEXUS_ICP_BRASIL_TESTS.ps1
           ./tests/NEXUS_LOGIN_MAXDATA_TESTS.ps1
+          ./tests/NEXUS_DLLS_FALTANTES_TESTS.ps1
