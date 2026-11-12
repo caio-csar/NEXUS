@@ -644,6 +644,62 @@ function Configurar-LoginMaxdataNexus {
     }
 }
 
+function Inserir-DllsFaltantesNexus {
+    # A pasta padrao e C:\MAX. Para outros locais, solicita a pasta existente.
+    $pastaSistema = "C:\MAX"
+    if (-not (Test-Path -LiteralPath $pastaSistema -PathType Container)) {
+        $pastaSistema = Selecionar-PastaNexus -Titulo "Selecione a pasta do sistema que recebera as DLLs"
+    }
+
+    if ([string]::IsNullOrWhiteSpace($pastaSistema) -or
+        -not (Test-Path -LiteralPath $pastaSistema -PathType Container)) {
+        Mostrar-Aviso "Pasta do sistema nao encontrada. Nenhuma DLL foi inserida."
+        return
+    }
+
+    $temporario = Join-Path $env:TEMP ("NEXUS_DLLS_" + [guid]::NewGuid().ToString("N"))
+    $arquivoRar = Join-Path $temporario "dlls.rar"
+    $arquivoScript = Join-Path $temporario "Completar-DLLs.ps1"
+    $progressoAnterior = $ProgressPreference
+    $ProgressPreference = "SilentlyContinue"
+
+    try {
+        [void][System.IO.Directory]::CreateDirectory($temporario)
+
+        # Mesma fonte de DLLs utilizada pelo modulo de instalacao do NEXUS.
+        $urlDlls = "https://cloud.maxdata.com.br/s/5MaMq2RJ5fzYEbA/download/DLLS.rar"
+        Invoke-WebRequest -Uri $urlDlls -OutFile $arquivoRar -UseBasicParsing -TimeoutSec 180 -ErrorAction Stop | Out-Null
+
+        if (-not (Test-ArquivoRarNexus -Caminho $arquivoRar)) {
+            throw "O download nao retornou um arquivo RAR de DLLs valido."
+        }
+
+        if (-not (Baixar-ArquivoPublicoUtilitario -Caminho "Scripts_Uteis/Completar-DLLs.ps1" -Destino $arquivoScript -Nome "Completar DLLs")) {
+            throw "Nao foi possivel obter a rotina de DLLs."
+        }
+
+        # Instalador ja utiliza 7-Zip; somente instala a ferramenta se necessario.
+        $sevenZip = Obter-7ZipNexus -TempPath $temporario
+        if (-not $sevenZip -or -not (Test-Path -LiteralPath $sevenZip -PathType Leaf)) {
+            throw "7-Zip indisponivel para extrair o pacote."
+        }
+
+        & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $arquivoScript -PastaSistema $pastaSistema -ArquivoRar $arquivoRar -SevenZipPath $sevenZip
+
+        if ($LASTEXITCODE -ne 0) {
+            Mostrar-Erro "Nao foi possivel completar todas as DLLs faltantes."
+        }
+    }
+    catch {
+        Mostrar-Erro "Falha ao inserir DLLs faltantes."
+        Mostrar-Detalhe $_.Exception.Message
+    }
+    finally {
+        $ProgressPreference = $progressoAnterior
+        Remove-Item -LiteralPath $temporario -Recurse -Force -ErrorAction SilentlyContinue
+    }
+}
+
 function Mostrar-MenuUtilitariosNexus {
     Write-Host "NEXUS  |  UTILITARIOS" -ForegroundColor Cyan
     Write-Host "Automacao tecnica" -ForegroundColor DarkGray
@@ -659,6 +715,7 @@ function Mostrar-MenuUtilitariosNexus {
     Write-Host "  [5] Criar Banco Auxiliar" -ForegroundColor Gray
     Write-Host "  [6] Atualizar Cadeia ICP-Brasil" -ForegroundColor Gray
     Write-Host "  [7] Criar usuarios no banco" -ForegroundColor Gray
+    Write-Host "  [8] Inserir DLLs faltantes" -ForegroundColor Gray
     Write-Host ""
 
     Write-Host "----------------------------------------" -ForegroundColor DarkGray
@@ -680,6 +737,7 @@ while ($true) {
         "5" { Criar-BancoAuxiliarNexus; Pausar-UtilitarioNexus -Nome "banco auxiliar" }
         "6" { Atualizar-CadeiaIcpBrasilNexus }
         "7" { Configurar-LoginMaxdataNexus; Pausar-UtilitarioNexus -Nome "criar usuarios no banco" }
+        "8" { Inserir-DllsFaltantesNexus; Pausar-UtilitarioNexus -Nome "completar DLLs" }
         "0" { return }
         default { continue }
     }
