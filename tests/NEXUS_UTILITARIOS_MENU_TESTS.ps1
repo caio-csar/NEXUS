@@ -70,8 +70,8 @@ Assert-Contains `
 
 Assert-Contains `
     -Text $util `
-    -Expected 'Abrir MaxHub' `
-    -Message "Utilitarios deve ter a opcao Abrir MaxHub."
+    -Expected 'Abrir Portas' `
+    -Message "Utilitarios deve ter a opcao Abrir Portas."
 
 Assert-Contains `
     -Text $util `
@@ -135,8 +135,28 @@ Assert-Contains `
 
 Assert-Contains `
     -Text $util `
-    -Expected '  [3] Abrir MaxHub' `
-    -Message "MaxHub deve ficar na opcao 3."
+    -Expected '  [3] Abrir Portas' `
+    -Message "Abrir Portas deve ficar na opcao 3."
+
+Assert-Contains `
+    -Text $util `
+    -Expected '"3" { Abrir-PortasSqlNexus; Pausar-UtilitarioNexus -Nome "abrir portas SQL" }' `
+    -Message "A opcao 3 deve executar Abrir Portas SQL."
+
+Assert-Contains `
+    -Text $util `
+    -Expected 'function Abrir-PortasSqlNexus' `
+    -Message "A rotina de firewall deve existir no modulo Utilitarios."
+
+Assert-NotContains `
+    -Text $util `
+    -Unexpected '  [3] Abrir MaxHub' `
+    -Message "MaxHub deve sair do menu Utilitarios."
+
+Assert-NotContains `
+    -Text $util `
+    -Unexpected '"3" { Abrir-MaxHubNexus' `
+    -Message "A opcao 3 nao deve executar MaxHub."
 
 Assert-Contains `
     -Text $util `
