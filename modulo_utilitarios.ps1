@@ -697,6 +697,68 @@ function Inserir-DllsFaltantesNexus {
     }
 }
 
+function Abrir-PortasSqlNexus {
+    Mostrar-TituloNexus "ABRIR PORTAS SQL"
+
+    if (-not (Confirmar-Acao "Liberar portas SQL 1433-1434 TCP/UDP (entrada e saida) no Firewall do Windows")) {
+        Mostrar-Aviso "Operacao cancelada."
+        return
+    }
+
+    # Mesmas portas e nomes de regras do modulo instalador.
+    $portas = "1433-1434"
+    $regras = @(
+        @{ Nome = "SQL-IN-TCP-$portas";  Direcao = "Inbound";  Protocolo = "TCP" },
+        @{ Nome = "SQL-OUT-TCP-$portas"; Direcao = "Outbound"; Protocolo = "TCP" },
+        @{ Nome = "SQL-IN-UDP-$portas";  Direcao = "Inbound";  Protocolo = "UDP" },
+        @{ Nome = "SQL-OUT-UDP-$portas"; Direcao = "Outbound"; Protocolo = "UDP" }
+    )
+
+    $criadas = 0
+    $existentes = 0
+    $falhas = 0
+
+    foreach ($regra in $regras) {
+        try {
+            $atual = Get-NetFirewallRule -DisplayName $regra.Nome -ErrorAction SilentlyContinue |
+                Select-Object -First 1
+
+            if ($null -ne $atual) {
+                if ([string]$atual.Enabled -ne "True" -or [string]$atual.Action -ne "Allow" -or
+                    [string]$atual.Direction -ne $regra.Direcao) {
+                    throw "A regra '$($regra.Nome)' existe, mas esta desativada ou possui configuracao divergente."
+                }
+                $existentes++
+                continue
+            }
+        }
+        catch {
+            $falhas++
+            Mostrar-Erro "Falha ao verificar $($regra.Nome): $($_.Exception.Message)"
+            continue
+        }
+
+        try {
+            New-NetFirewallRule -DisplayName $regra.Nome -Direction $regra.Direcao -Protocol $regra.Protocolo -LocalPort $portas -Action Allow -ErrorAction Stop | Out-Null
+            $criadas++
+        }
+        catch {
+            $falhas++
+            Mostrar-Erro "Falha ao criar $($regra.Nome): $($_.Exception.Message)"
+        }
+    }
+
+    if ($falhas -gt 0) {
+        Mostrar-Erro "$falhas regra(s) nao foram configuradas. Criadas: $criadas. Ja existentes: $existentes."
+    }
+    elseif ($criadas -eq 0) {
+        Mostrar-Sucesso "As 4 regras de portas SQL ja existiam."
+    }
+    else {
+        Mostrar-Sucesso "$criadas regra(s) de portas SQL criadas. $existentes ja existiam."
+    }
+}
+
 function Mostrar-MenuUtilitariosNexus {
     Write-Host "NEXUS  |  UTILITARIOS" -ForegroundColor Cyan
     Write-Host "Automacao tecnica" -ForegroundColor DarkGray
@@ -707,7 +769,7 @@ function Mostrar-MenuUtilitariosNexus {
     Write-Host "SUPORTE" -ForegroundColor Yellow
     Write-Host "  [1] Corrigir WMI" -ForegroundColor Gray
     Write-Host "  [2] Instalar/Verificar ODBC" -ForegroundColor Gray
-    Write-Host "  [3] Abrir MaxHub" -ForegroundColor Gray
+    Write-Host "  [3] Abrir Portas" -ForegroundColor Gray
     Write-Host "  [4] Abrir Pasta do Sistema" -ForegroundColor Gray
     Write-Host "  [5] Criar Banco Auxiliar" -ForegroundColor Gray
     Write-Host "  [6] Atualizar Cadeia ICP-Brasil" -ForegroundColor Gray
@@ -729,7 +791,7 @@ while ($true) {
     switch ($op) {
         "1" { Corrigir-WmiNexus; Pausar-UtilitarioNexus -Nome "correcao WMI" }
         "2" { Instalar-VerificarOdbcNexus }
-        "3" { Abrir-MaxHubNexus; Pausar-UtilitarioNexus -Nome "MaxHub" }
+        "3" { Abrir-PortasSqlNexus; Pausar-UtilitarioNexus -Nome "abrir portas SQL" }
         "4" { Abrir-PastaSistemaNexus; Pausar-UtilitarioNexus -Nome "abrir pasta" }
         "5" { Criar-BancoAuxiliarNexus; Pausar-UtilitarioNexus -Nome "banco auxiliar" }
         "6" { Atualizar-CadeiaIcpBrasilNexus }
