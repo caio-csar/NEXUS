@@ -31,7 +31,7 @@ Menu de Utilitarios:
 ```text
 [1] Corrigir WMI
 [2] Instalar/Verificar ODBC
-[3] Abrir MaxHub
+[3] Abrir Portas
 [4] Abrir Pasta do Sistema
 [5] Criar Banco Auxiliar
 [6] Atualizar Cadeia ICP-Brasil
@@ -134,19 +134,35 @@ Utilitarios atuais:
 
 - Corrigir WMI;
 - Instalar/Verificar ODBC;
-- Abrir MaxHub;
+- Abrir Portas (Firewall SQL TCP/UDP 1433-1434);
 - Abrir Pasta do Sistema.
 - Criar Banco Auxiliar;
 - Atualizar Cadeia ICP-Brasil (download oficial ITI, SHA-512, instalacao de ACs validas e relatorio local).
 - Criar usuarios no banco (detectar SQL local, criar/verificar login, roles e usuario sem duplicar).
 
-O MaxHub e baixado do Google Drive como `MaxHub.rar`, extraido em pasta temporaria, executado uma vez e removido quando o processo fecha.
+O MaxHub nao aparece mais no menu Utilitarios; o codigo de abertura permanece disponivel internamente, sem acionamento pela opcao 3.
 
 ### `modulo_backup.ps1`
 
 Modulo antigo de backup. Hoje nao esta no menu principal, mas contem uma logica util para listar bancos locais via `sqlcmd`.
 
 Essa logica ainda deve ser centralizada no `NEXUS_SHARED.ps1` futuramente.
+
+### Abrir Portas
+
+A opcao `[3] Abrir Portas` reaproveita as portas e os nomes das regras
+definidos no instalador NEXUS: **1433-1434 TCP/UDP**, com regras de entrada e
+saida no Firewall do Windows.
+
+- Solicita confirmacao antes de modificar o Firewall.
+- Cria somente regras ausentes; as ja existentes e ativas nao sao duplicadas.
+- Se encontrar regras homonimas desativadas ou divergentes, avisa sobre a
+  configuracao e nao as substitui silenciosamente.
+- Exibe a quantidade de regras criadas, existentes e eventuais falhas.
+
+A abertura de portas deve ser feita apenas em maquinas autorizadas. Requer
+privilegios administrativos e nao garante, isoladamente, conectividade SQL;
+o servico, instancia, protocolo e demais filtros de rede tambem precisam estar corretos.
 
 ### Atualizar Cadeia ICP-Brasil
 
@@ -272,7 +288,7 @@ Essa funcao saiu do menu por enquanto, mas deve ser reaproveitada futuramente pa
 
 ## MaxHub
 
-No menu Utilitarios, a opcao `Abrir MaxHub`:
+A rotina legada `Abrir-MaxHubNexus` permanece fora do menu Utilitarios. Quando utilizada diretamente por codigo, ela:
 
 1. monta o link confirmado do Google Drive;
 2. baixa `MaxHub.rar`;
